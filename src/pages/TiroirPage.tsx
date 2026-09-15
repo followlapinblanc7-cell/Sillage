@@ -9,6 +9,12 @@ interface Props {
 
 type Section = 'main' | 'epingles' | 'coffre' | 'reglages' | 'apropos';
 
+const HOUR_OPTIONS = [20, 21, 22] as const;
+
+function hourLabel(h: number): string {
+  return `${h} h`;
+}
+
 export function TiroirPage({ journal }: Props) {
   const [section, setSection] = useState<Section>('main');
 
@@ -95,6 +101,8 @@ export function TiroirPage({ journal }: Props) {
   }
 
   if (section === 'reglages') {
+    const reminderOn = journal.eveningReminder;
+    const hour = journal.eveningHour;
     return (
       <div>
         <button type="button" className="btn-ghost" onClick={() => setSection('main')} style={{ marginBottom: 14 }}>
@@ -102,6 +110,42 @@ export function TiroirPage({ journal }: Props) {
         </button>
         <h1 className="page-title">Réglages</h1>
         <div className="drawer-card">
+          <div className="drawer-row">
+            <div className="left">
+              Rappel du soir
+              <span>Si tu n&apos;as pas écrit, un geste discret.</span>
+            </div>
+            <button
+              type="button"
+              className={`toggle${reminderOn ? ' on' : ''}`}
+              role="switch"
+              aria-checked={reminderOn}
+              aria-label="Rappel du soir"
+              onClick={() => journal.setEveningReminder(!reminderOn)}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+          {reminderOn ? (
+            <div className="drawer-row evening-hour-row">
+              <div className="left">
+                Heure
+                <span>Sur cet appareil seulement</span>
+              </div>
+              <div className="hour-chips" role="group" aria-label="Heure du rappel">
+                {HOUR_OPTIONS.map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    className={`hour-chip${hour === h ? ' active' : ''}`}
+                    onClick={() => journal.setEveningHour(h)}
+                  >
+                    {hourLabel(h)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <button type="button" className="drawer-row" onClick={() => journal.removeSamples()}>
             <div className="left">
               Retirer les exemples

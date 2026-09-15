@@ -30,6 +30,12 @@ export interface JournalState {
   days: Record<string, DayEntry>;
   showSamples: boolean;
   version: number;
+  /** Soft in-app evening nudge (default false) */
+  eveningReminder?: boolean;
+  /** Local hour 17–23 (default 21) */
+  eveningHour?: number;
+  /** Date id YYYY-MM-DD when evening banner was dismissed */
+  eveningDismissedOn?: string;
 }
 
 export const MOODS: { id: MoodId; label: string; icon: string }[] = [

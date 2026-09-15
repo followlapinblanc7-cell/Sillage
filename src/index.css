@@ -422,6 +422,49 @@ img {
   text-underline-offset: 3px;
 }
 
+.evening-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(40, 28, 28, 0.55);
+  border: 1px solid rgba(168, 72, 72, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.evening-banner strong {
+  color: var(--cream);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.05rem;
+  display: block;
+  margin-bottom: 2px;
+}
+.evening-banner-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.evening-banner-actions a,
+.evening-banner-actions button {
+  color: var(--accent-bright);
+  font-size: 0.8rem;
+  font-weight: 560;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.evening-banner-actions button {
+  color: var(--text-faint);
+  font-weight: 500;
+  text-decoration: none;
+}
+
 /* Day page */
 .day-header {
   display: flex;
@@ -453,6 +496,20 @@ img {
   border-radius: 999px;
   padding: 4px 10px;
   font-weight: 560;
+}
+
+.save-status {
+  margin-left: auto;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  font-style: italic;
+  opacity: 1;
+  transition: opacity 0.45s ease;
+  min-height: 1em;
+}
+.save-status.is-idle {
+  opacity: 0;
 }
 
 .day-date {
@@ -931,4 +988,57 @@ img {
   width: 1px;
   height: 1px;
   justify-self: end;
+}
+
+
+/* Settings toggle + hour chips */
+.toggle {
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-strong);
+  position: relative;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.toggle.on {
+  background: var(--accent-soft);
+  border-color: rgba(168, 72, 72, 0.55);
+}
+.toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.toggle.on .toggle-knob {
+  transform: translateX(18px);
+  background: var(--cream);
+}
+.evening-hour-row {
+  flex-wrap: wrap;
+}
+.hour-chips {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.hour-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  background: transparent;
+}
+.hour-chip.active {
+  color: var(--cream);
+  border-color: rgba(168, 72, 72, 0.55);
+  background: var(--accent-soft);
 }

@@ -16,6 +16,10 @@ export function FilPage({ journal }: Props) {
     visibleDays,
     showSamplesBanner,
     removeSamples,
+    eveningReminder,
+    eveningHour,
+    eveningDismissedOn,
+    dismissEveningReminder,
   } = journal;
 
   const contentDays = visibleDays;
@@ -26,10 +30,36 @@ export function FilPage({ journal }: Props) {
     contentDays.some((d) => d.id === today);
   const older = contentDays.filter((d) => d.id !== today);
 
+  const localHour = new Date().getHours();
+  // Banner when reminder is on, evening hour reached, and nothing
+  // visible as "written today" on Fil (empty or private-only).
+  const showEveningBanner =
+    eveningReminder &&
+    localHour >= eveningHour &&
+    !hasToday &&
+    eveningDismissedOn !== today;
+
   if (contentDays.length === 0) {
     return (
       <div>
         <BrandHeader />
+        {showEveningBanner ? (
+          <div className="evening-banner" role="status">
+            <div>
+              <strong>Et si tu écrivais aujourd&apos;hui ?</strong>
+              Un geste discret, rien d&apos;obligatoire.
+            </div>
+            <div className="evening-banner-actions">
+              <Link to={`/jour/${today}`}>Écrire</Link>
+              <button
+                type="button"
+                onClick={() => dismissEveningReminder(today)}
+              >
+                Plus tard
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="empty-state">
           <p className="empty-quote">
             « Rien n&apos;est trop petit pour rester ici. »
@@ -49,6 +79,23 @@ export function FilPage({ journal }: Props) {
     <div>
       <BrandHeader />
       {showSamplesBanner ? <SampleBanner onRemove={removeSamples} /> : null}
+      {showEveningBanner ? (
+        <div className="evening-banner" role="status">
+          <div>
+            <strong>Et si tu écrivais aujourd&apos;hui ?</strong>
+            Un geste discret, rien d&apos;obligatoire.
+          </div>
+          <div className="evening-banner-actions">
+            <Link to={`/jour/${today}`}>Écrire</Link>
+            <button
+              type="button"
+              onClick={() => dismissEveningReminder(today)}
+            >
+              Plus tard
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <WeekStrip today={today} daysById={state.days} />
 

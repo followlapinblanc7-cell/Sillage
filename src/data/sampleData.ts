@@ -1,6 +1,6 @@
 import type { DayEntry } from '../types';
 
-/** Today fixed for demo: mardi 15 septembre 2026 */
+/** Sample-day anchor (past when device today moves forward) */
 export const DEMO_TODAY = '2026-09-15';
 
 export const SAMPLE_DAYS: DayEntry[] = [

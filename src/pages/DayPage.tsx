@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MOODS } from '../types';
 import {
@@ -12,6 +12,16 @@ interface Props {
   journal: JournalApi;
 }
 
+type SavePhase = 'idle' | 'saving' | 'saved';
+
+function titleFromStory(story: string, max = 56): string {
+  const firstLine = story.split(/\r?\n/)[0] ?? '';
+  const collapsed = firstLine.trim().replace(/\s+/g, ' ');
+  if (!collapsed) return '';
+  if (collapsed.length <= max) return collapsed;
+  return `${collapsed.slice(0, max - 1).trimEnd()}…`;
+}
+
 export function DayPage({ journal }: Props) {
   const { id = journal.today } = useParams();
   const navigate = useNavigate();
@@ -23,6 +33,66 @@ export function DayPage({ journal }: Props) {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [savePhase, setSavePhase] = useState<SavePhase>('idle');
+
+  const skipFirstSave = useRef(true);
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const saveSig = useMemo(
+    () =>
+      JSON.stringify({
+        title: day.title,
+        story: day.story,
+        location: day.location,
+        mood: day.mood,
+        photos: day.photos.map((p) => `${p.id}:${p.pinned ? 1 : 0}`),
+        private: day.private,
+        pinned: day.pinned,
+        updatedAt: day.updatedAt,
+      }),
+    [
+      day.title,
+      day.story,
+      day.location,
+      day.mood,
+      day.photos,
+      day.private,
+      day.pinned,
+      day.updatedAt,
+    ],
+  );
+
+  useEffect(() => {
+    if (skipFirstSave.current) {
+      skipFirstSave.current = false;
+      return;
+    }
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
+
+    saveDebounceRef.current = setTimeout(() => {
+      setSavePhase('saving');
+      // Data already persisted by useJournal; brief "saving" then "saved"
+      savedFadeRef.current = setTimeout(() => {
+        setSavePhase('saved');
+        savedFadeRef.current = setTimeout(() => {
+          setSavePhase('idle');
+        }, 1800);
+      }, 280);
+    }, 400);
+
+    return () => {
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    };
+  }, [saveSig]);
+
+  useEffect(() => {
+    return () => {
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
+    };
+  }, []);
 
   const metaSummary = useMemo(() => {
     const parts: string[] = [];
@@ -83,6 +153,13 @@ export function DayPage({ journal }: Props) {
     }
   };
 
+  const onStoryBlur = () => {
+    if (day.title.trim()) return;
+    if (!day.story.trim()) return;
+    const auto = titleFromStory(day.story);
+    if (auto) journal.updateDay(id, { title: auto });
+  };
+
   return (
     <div>
       <div className="day-header">
@@ -92,6 +169,16 @@ export function DayPage({ journal }: Props) {
           </svg>
         </Link>
         <span className="badge">{badgeLabel}</span>
+        <span
+          className={`save-status${savePhase === 'idle' ? ' is-idle' : ''}`}
+          aria-live="polite"
+        >
+          {savePhase === 'saving'
+            ? 'Enregistrement…'
+            : savePhase === 'saved'
+              ? 'Enregistré'
+              : ''}
+        </span>
       </div>
 
       <p className="day-date">{formatDateLong(id)}</p>
@@ -99,7 +186,7 @@ export function DayPage({ journal }: Props) {
       <input
         className="title-input"
         type="text"
-        placeholder="Ajoute un titre…"
+        placeholder="Un titre, même court…"
         value={day.title}
         onChange={(e) => journal.updateDay(id, { title: e.target.value })}
         aria-label="Titre"
@@ -111,6 +198,7 @@ export function DayPage({ journal }: Props) {
         placeholder="Écris librement…"
         value={day.story}
         onChange={(e) => journal.updateDay(id, { story: e.target.value })}
+        onBlur={onStoryBlur}
         aria-label="Histoire"
       />
 

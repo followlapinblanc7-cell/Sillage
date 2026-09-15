@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DayEntry, JournalState, MoodId, Photo } from '../types';
-import { DEMO_TODAY, SAMPLE_DAYS } from '../data/sampleData';
+import { SAMPLE_DAYS } from '../data/sampleData';
 
 const STORAGE_KEY = 'sillage-journal-v1';
 
+function toId(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function todayId(): string {
-  // Use demo today so sample data aligns with "aujourd'hui"
-  return DEMO_TODAY;
+  return toId(new Date());
+}
+
+function clampEveningHour(hour: number): number {
+  if (!Number.isFinite(hour)) return 21;
+  return Math.min(23, Math.max(17, Math.round(hour)));
 }
 
 function emptyDay(id: string): DayEntry {
@@ -28,14 +39,27 @@ function loadState(): JournalState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as JournalState;
-      if (parsed && parsed.version === 1 && parsed.days) return parsed;
+      if (parsed && parsed.version === 1 && parsed.days) {
+        return {
+          ...parsed,
+          eveningReminder: parsed.eveningReminder ?? false,
+          eveningHour: clampEveningHour(parsed.eveningHour ?? 21),
+          eveningDismissedOn: parsed.eveningDismissedOn,
+        };
+      }
     }
   } catch {
     /* ignore */
   }
   const days: Record<string, DayEntry> = {};
   for (const d of SAMPLE_DAYS) days[d.id] = structuredClone(d);
-  return { days, showSamples: true, version: 1 };
+  return {
+    days,
+    showSamples: true,
+    version: 1,
+    eveningReminder: false,
+    eveningHour: 21,
+  };
 }
 
 function saveState(state: JournalState) {
@@ -190,6 +214,27 @@ export function useJournal() {
     updateDay(dayId, { mood });
   }, [updateDay]);
 
+  const setEveningReminder = useCallback((enabled: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      eveningReminder: enabled,
+    }));
+  }, []);
+
+  const setEveningHour = useCallback((hour: number) => {
+    setState((prev) => ({
+      ...prev,
+      eveningHour: clampEveningHour(hour),
+    }));
+  }, []);
+
+  const dismissEveningReminder = useCallback((dateId: string) => {
+    setState((prev) => ({
+      ...prev,
+      eveningDismissedOn: dateId,
+    }));
+  }, []);
+
   const search = useCallback(
     (q: string, moodFilter?: MoodId | null) => {
       const query = q.trim().toLowerCase();
@@ -240,6 +285,10 @@ export function useJournal() {
     return SAMPLE_DAYS.some((s) => state.days[s.id]);
   }, [state.days]);
 
+  const eveningReminder = state.eveningReminder ?? false;
+  const eveningHour = clampEveningHour(state.eveningHour ?? 21);
+  const eveningDismissedOn = state.eveningDismissedOn;
+
   return {
     state,
     today,
@@ -262,6 +311,12 @@ export function useJournal() {
     privateDays,
     samplesPresent,
     showSamplesBanner: state.showSamples && samplesPresent,
+    eveningReminder,
+    eveningHour,
+    eveningDismissedOn,
+    setEveningReminder,
+    setEveningHour,
+    dismissEveningReminder,
   };
 }
 
@@ -319,13 +374,6 @@ export function weekDaysAround(today: string): string[] {
     ids.push(toId(x));
   }
   return ids;
-}
-
-function toId(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 export type JournalApi = ReturnType<typeof useJournal>;
