@@ -22,7 +22,8 @@ export function DayPage({ journal }: Props) {
   );
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const metaSummary = useMemo(() => {
     const parts: string[] = [];
@@ -49,9 +50,14 @@ export function DayPage({ journal }: Props) {
     }
   };
 
-  const openPhotoPicker = () => {
+  const openGallery = () => {
     setPhotoError(null);
-    fileInputRef.current?.click();
+    galleryInputRef.current?.click();
+  };
+
+  const openCamera = () => {
+    setPhotoError(null);
+    cameraInputRef.current?.click();
   };
 
   const onPhotosPicked = async (files: FileList | null) => {
@@ -74,7 +80,8 @@ export function DayPage({ journal }: Props) {
       );
     } finally {
       setPhotoBusy(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
 
@@ -173,20 +180,36 @@ export function DayPage({ journal }: Props) {
                 </div>
               </div>
             ))}
-                        <button
+            <button
               type="button"
               className="add-photo"
-              onClick={openPhotoPicker}
+              onClick={openGallery}
               disabled={photoBusy}
             >
               <span aria-hidden="true">＋</span>
-              {photoBusy ? 'Ajout…' : 'Ajouter'}
+              {photoBusy ? 'Ajout…' : 'Galerie'}
+            </button>
+            <button
+              type="button"
+              className="add-photo"
+              onClick={openCamera}
+              disabled={photoBusy}
+            >
+              <span aria-hidden="true">📷</span>
+              Appareil
             </button>
             <input
-              ref={fileInputRef}
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
+              multiple
+              hidden
+              onChange={(e) => onPhotosPicked(e.target.files)}
+            />
+            <input
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
-              multiple
               capture="environment"
               hidden
               onChange={(e) => onPhotosPicked(e.target.files)}
