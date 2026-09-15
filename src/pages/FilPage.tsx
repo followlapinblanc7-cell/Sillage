@@ -3,10 +3,7 @@ import { BrandHeader } from '../components/BrandHeader';
 import { DayCard } from '../components/DayCard';
 import { SampleBanner } from '../components/SampleBanner';
 import { WeekStrip } from '../components/WeekStrip';
-import {
-  hasContent,
-  type JournalApi,
-} from '../hooks/useJournal';
+import { type JournalApi } from '../hooks/useJournal';
 
 interface Props {
   journal: JournalApi;
@@ -21,9 +18,12 @@ export function FilPage({ journal }: Props) {
     removeSamples,
   } = journal;
 
-  const contentDays = visibleDays.filter((d) => !d.private && hasContent(d));
+  const contentDays = visibleDays;
   const todayEntry = state.days[today];
-  const hasToday = todayEntry ? hasContent(todayEntry) : false;
+  const hasToday =
+    !!todayEntry &&
+    !todayEntry.private &&
+    contentDays.some((d) => d.id === today);
   const older = contentDays.filter((d) => d.id !== today);
 
   if (contentDays.length === 0) {

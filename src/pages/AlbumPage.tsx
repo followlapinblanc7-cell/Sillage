@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import {
   coverPhoto,
   formatDateShort,
-  hasContent,
   type JournalApi,
 } from '../hooks/useJournal';
 
@@ -11,9 +10,7 @@ interface Props {
 }
 
 export function AlbumPage({ journal }: Props) {
-  const days = journal.visibleDays.filter(
-    (d) => !d.private && hasContent(d) && d.photos.length > 0,
-  );
+  const days = journal.visibleDays.filter((d) => d.photos.length > 0);
 
   return (
     <div>

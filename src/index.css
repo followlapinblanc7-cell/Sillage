@@ -778,6 +778,17 @@ img {
   color: var(--text-faint);
 }
 
+.drawer-row .count {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.coffre-hint {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+}
+
 .pinned-mini {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

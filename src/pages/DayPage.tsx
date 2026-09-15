@@ -38,14 +38,22 @@ export function DayPage({ journal }: Props) {
     return parts.length ? parts.join(' · ') : 'Lieu, humeur, photos…';
   }, [day.mood, day.location, day.photos.length]);
 
+  const badgeLabel = day.private
+    ? 'Coffre'
+    : isToday
+      ? "Aujourd'hui"
+      : 'Souvenir';
+
+  const backTo = day.private ? '/tiroir' : '/';
+
   const handleDelete = () => {
     if (!hasContent(day)) {
-      navigate('/');
+      navigate(backTo);
       return;
     }
     if (window.confirm('Effacer cette journée ?')) {
       journal.deleteDay(id);
-      navigate('/');
+      navigate(backTo);
     }
   };
 
@@ -78,12 +86,12 @@ export function DayPage({ journal }: Props) {
   return (
     <div>
       <div className="day-header">
-        <Link to="/" className="back-btn" aria-label="Retour">
+        <Link to={backTo} className="back-btn" aria-label="Retour">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </Link>
-        <span className="badge">{isToday ? "Aujourd'hui" : 'Souvenir'}</span>
+        <span className="badge">{badgeLabel}</span>
       </div>
 
       <p className="day-date">{formatDateLong(id)}</p>
@@ -200,9 +208,14 @@ export function DayPage({ journal }: Props) {
               className="btn-ghost"
               onClick={() => journal.updateDay(id, { private: !day.private })}
             >
-              {day.private ? 'Rendre public' : 'Privé'}
+              {day.private ? 'Sortir du coffre' : 'Mettre au coffre'}
             </button>
           </div>
+          {day.private ? (
+            <p className="muted coffre-hint">
+              Invisible dans le Fil, l&apos;Album et la recherche.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

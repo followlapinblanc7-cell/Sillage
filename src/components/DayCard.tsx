@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { DayEntry } from '../types';
 import { moodLabel } from '../types';
-import { coverPhoto } from '../hooks/useJournal';
+import { coverPhoto, formatDateShort } from '../hooks/useJournal';
 
 function excerpt(text: string, max = 120): string {
   const clean = text.replace(/\s+/g, ' ').trim();
@@ -12,13 +12,15 @@ function excerpt(text: string, max = 120): string {
 interface Props {
   day: DayEntry;
   featured?: boolean;
+  showDate?: boolean;
 }
 
-export function DayCard({ day, featured }: Props) {
+export function DayCard({ day, featured, showDate = false }: Props) {
   const cover = coverPhoto(day);
   const mood = moodLabel(day.mood);
   const n = day.photos.length;
   const metaParts = [
+    showDate ? formatDateShort(day.id) : null,
     mood || null,
     day.location.trim() || null,
     n ? `${n} photo${n > 1 ? 's' : ''}` : null,

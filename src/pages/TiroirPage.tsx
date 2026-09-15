@@ -1,55 +1,73 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { DayCard } from '../components/DayCard';
 import type { JournalApi } from '../hooks/useJournal';
 
 interface Props {
   journal: JournalApi;
 }
 
-type Section = 'main' | 'epingles' | 'prive' | 'reglages' | 'apropos';
+type Section = 'main' | 'epingles' | 'coffre' | 'reglages' | 'apropos';
 
 export function TiroirPage({ journal }: Props) {
   const [section, setSection] = useState<Section>('main');
 
   if (section === 'epingles') {
+    const hasPinned =
+      journal.pinnedPhotos.length > 0 || journal.pinnedDays.length > 0;
     return (
       <div>
         <button type="button" className="btn-ghost" onClick={() => setSection('main')} style={{ marginBottom: 14 }}>
           ← Retour
         </button>
         <h1 className="page-title">Épinglés</h1>
-        <p className="page-sub">Photos marquées d&apos;une épingle</p>
-        {journal.pinnedPhotos.length === 0 ? (
+        <p className="page-sub">Photos et jours mis en avant</p>
+        {!hasPinned ? (
           <p className="muted">Rien d&apos;épinglé pour l&apos;instant.</p>
         ) : (
-          <div className="pinned-mini">
-            {journal.pinnedPhotos.map(({ day, photo }) => (
-              <Link key={photo.id} to={`/jour/${day.id}`}>
-                <img src={photo.url} alt={day.title || 'Photo'} loading="lazy" />
-              </Link>
-            ))}
-          </div>
+          <>
+            {journal.pinnedPhotos.length > 0 ? (
+              <div className="pinned-mini">
+                {journal.pinnedPhotos.map(({ day, photo }) => (
+                  <Link key={photo.id} to={`/jour/${day.id}`}>
+                    <img src={photo.url} alt={day.title || 'Photo'} loading="lazy" />
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+            {journal.pinnedDays.length > 0 ? (
+              <div style={{ marginTop: journal.pinnedPhotos.length > 0 ? 18 : 0 }}>
+                {journal.pinnedDays.map((d) => (
+                  <DayCard key={d.id} day={d} showDate />
+                ))}
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     );
   }
 
-  if (section === 'prive') {
+  if (section === 'coffre') {
     return (
       <div>
         <button type="button" className="btn-ghost" onClick={() => setSection('main')} style={{ marginBottom: 14 }}>
           ← Retour
         </button>
-        <h1 className="page-title">Privé</h1>
-        <p className="page-sub">Jours marqués comme privés</p>
+        <h1 className="page-title">Coffre</h1>
+        <p className="page-sub">Jours visibles seulement ici.</p>
         {journal.privateDays.length === 0 ? (
-          <p className="muted">Aucun jour privé.</p>
+          <div className="empty-state">
+            <p className="empty-quote">
+              « Ce que tu ranges ici n&apos;apparaît nulle part ailleurs. »
+            </p>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Depuis un jour, mets-le au coffre.
+            </p>
+          </div>
         ) : (
           journal.privateDays.map((d) => (
-            <Link key={d.id} to={`/jour/${d.id}`} className="search-result">
-              <div className="t">{d.title.trim() || 'Sans titre'}</div>
-              <div className="m">{d.id}</div>
-            </Link>
+            <DayCard key={d.id} day={d} showDate />
           ))
         )}
       </div>
@@ -136,21 +154,21 @@ export function TiroirPage({ journal }: Props) {
           <button type="button" className="drawer-row" onClick={() => setSection('epingles')}>
             <div className="left">
               Épinglés
-              <span>{journal.pinnedPhotos.length} photo(s)</span>
+              <span>Photos et jours mis en avant</span>
             </div>
             <span className="chev">›</span>
           </button>
-          <button type="button" className="drawer-row" onClick={() => setSection('prive')}>
+          <button type="button" className="drawer-row" onClick={() => setSection('coffre')}>
             <div className="left">
-              Privé
-              <span>{journal.privateDays.length} jour(s)</span>
+              Coffre
+              <span>Jours visibles seulement ici · {journal.privateDays.length}</span>
             </div>
             <span className="chev">›</span>
           </button>
           <button type="button" className="drawer-row" onClick={() => setSection('reglages')}>
             <div className="left">
               Réglages
-              <span>Exemples, langue, à propos</span>
+              <span>Données, exemples, à propos</span>
             </div>
             <span className="chev">›</span>
           </button>

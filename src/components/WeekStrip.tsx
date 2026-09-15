@@ -23,9 +23,12 @@ export function WeekStrip({ today, daysById }: Props) {
       <div className="week-strip">
         {ids.map((id, i) => {
           const entry = daysById[id];
-          const cover = entry ? coverPhoto(entry) : null;
+          const isPrivate = entry?.private === true;
+          const cover =
+            entry && !isPrivate ? coverPhoto(entry) : null;
           const isToday = id === today;
-          const has = entry ? hasContent(entry) : false;
+          const has =
+            entry && !isPrivate ? hasContent(entry) : false;
           return (
             <Link
               key={id}

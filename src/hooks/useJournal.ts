@@ -61,8 +61,7 @@ export function useJournal() {
   }, [state.days]);
 
   const visibleDays = useMemo(() => {
-    // Fil / Album show non-private primarily; private still accessible via Tiroir
-    return allDays.filter((d) => hasContent(d));
+    return allDays.filter((d) => hasContent(d) && !d.private);
   }, [allDays]);
 
   const getDay = useCallback(
@@ -195,7 +194,7 @@ export function useJournal() {
     (q: string, moodFilter?: MoodId | null) => {
       const query = q.trim().toLowerCase();
       return allDays.filter((d) => {
-        if (!hasContent(d)) return false;
+        if (!hasContent(d) || d.private) return false;
         if (moodFilter && d.mood !== moodFilter) return false;
         if (!query) return !!moodFilter;
         const hay = [d.title, d.story, d.location, d.mood ?? '']
@@ -210,6 +209,7 @@ export function useJournal() {
   const moodsInData = useMemo(() => {
     const set = new Set<MoodId>();
     for (const d of allDays) {
+      if (d.private) continue;
       if (d.mood && hasContent(d)) set.add(d.mood);
     }
     return Array.from(set);
@@ -218,15 +218,18 @@ export function useJournal() {
   const pinnedPhotos = useMemo(() => {
     const items: { day: DayEntry; photo: Photo }[] = [];
     for (const d of allDays) {
+      if (d.private) continue;
       for (const p of d.photos) {
         if (p.pinned) items.push({ day: d, photo: p });
-      }
-      if (d.pinned && hasContent(d)) {
-        // day itself pinned — already covered if has pinned photo
       }
     }
     return items;
   }, [allDays]);
+
+  const pinnedDays = useMemo(
+    () => allDays.filter((d) => d.pinned && !d.private && hasContent(d)),
+    [allDays],
+  );
 
   const privateDays = useMemo(
     () => allDays.filter((d) => d.private && hasContent(d)),
@@ -255,6 +258,7 @@ export function useJournal() {
     search,
     moodsInData,
     pinnedPhotos,
+    pinnedDays,
     privateDays,
     samplesPresent,
     showSamplesBanner: state.showSamples && samplesPresent,
