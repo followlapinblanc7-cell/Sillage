@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MOODS } from '../types';
 import {
@@ -6,7 +6,7 @@ import {
   hasContent,
   type JournalApi,
 } from '../hooks/useJournal';
-import { fileToDataUrl } from '../lib/imageFile';
+import { PhotoCaptureSheet } from '../components/PhotoCaptureSheet';
 
 interface Props {
   journal: JournalApi;
@@ -22,8 +22,7 @@ export function DayPage({ journal }: Props) {
   );
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
 
   const metaSummary = useMemo(() => {
     const parts: string[] = [];
@@ -50,24 +49,17 @@ export function DayPage({ journal }: Props) {
     }
   };
 
-  const openGallery = () => {
+  const openCapture = () => {
     setPhotoError(null);
-    galleryInputRef.current?.click();
+    setCaptureOpen(true);
   };
 
-  const openCamera = () => {
-    setPhotoError(null);
-    cameraInputRef.current?.click();
-  };
-
-  const onPhotosPicked = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const onPhotosFromSheet = async (dataUrls: string[]) => {
+    if (!dataUrls.length) return;
     setPhotoBusy(true);
     setPhotoError(null);
     try {
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith('image/')) continue;
-        const dataUrl = await fileToDataUrl(file);
+      for (const dataUrl of dataUrls) {
         journal.addPhoto(id, dataUrl);
       }
       setMetaOpen(true);
@@ -80,8 +72,6 @@ export function DayPage({ journal }: Props) {
       );
     } finally {
       setPhotoBusy(false);
-      if (galleryInputRef.current) galleryInputRef.current.value = '';
-      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
 
@@ -183,38 +173,12 @@ export function DayPage({ journal }: Props) {
             <button
               type="button"
               className="add-photo"
-              onClick={openGallery}
+              onClick={openCapture}
               disabled={photoBusy}
             >
               <span aria-hidden="true">＋</span>
-              {photoBusy ? 'Ajout…' : 'Galerie'}
+              {photoBusy ? 'Ajout…' : 'Ajouter'}
             </button>
-            <button
-              type="button"
-              className="add-photo"
-              onClick={openCamera}
-              disabled={photoBusy}
-            >
-              <span aria-hidden="true">📷</span>
-              Appareil
-            </button>
-            <input
-              ref={galleryInputRef}
-              type="file"
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
-              multiple
-              hidden
-              onChange={(e) => onPhotosPicked(e.target.files)}
-            />
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              hidden
-              onChange={(e) => onPhotosPicked(e.target.files)}
-            />
-
           </div>
 
           {photoError ? (
@@ -245,6 +209,13 @@ export function DayPage({ journal }: Props) {
       <button type="button" className="btn-danger" onClick={handleDelete}>
         Effacer cette journée
       </button>
+
+      <PhotoCaptureSheet
+        open={captureOpen}
+        onClose={() => setCaptureOpen(false)}
+        onPhotos={(urls) => void onPhotosFromSheet(urls)}
+        busy={photoBusy}
+      />
     </div>
   );
 }
