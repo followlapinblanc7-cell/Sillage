@@ -39,7 +39,12 @@ function loadState(): JournalState {
 }
 
 function saveState(state: JournalState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Sillage storage', e);
+    throw e;
+  }
 }
 
 export function useJournal() {

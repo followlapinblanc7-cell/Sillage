@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MOODS } from '../types';
 import {
@@ -6,16 +6,7 @@ import {
   hasContent,
   type JournalApi,
 } from '../hooks/useJournal';
-
-/** Extra Unsplash URLs for "Encore" photo adds */
-const EXTRA_PHOTOS = [
-  'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&q=80',
-  'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80',
-  'https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=800&q=80',
-  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
-  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&q=80',
-  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80',
-];
+import { fileToDataUrl } from '../lib/imageFile';
 
 interface Props {
   journal: JournalApi;
@@ -29,6 +20,9 @@ export function DayPage({ journal }: Props) {
   const [metaOpen, setMetaOpen] = useState(() =>
     !!(day.location || day.mood || day.photos.length),
   );
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const metaSummary = useMemo(() => {
     const parts: string[] = [];
@@ -55,13 +49,33 @@ export function DayPage({ journal }: Props) {
     }
   };
 
-  const addPhoto = () => {
-    const used = new Set(day.photos.map((p) => p.url));
-    const next =
-      EXTRA_PHOTOS.find((u) => !used.has(u)) ??
-      EXTRA_PHOTOS[day.photos.length % EXTRA_PHOTOS.length];
-    journal.addPhoto(id, next);
-    setMetaOpen(true);
+  const openPhotoPicker = () => {
+    setPhotoError(null);
+    fileInputRef.current?.click();
+  };
+
+  const onPhotosPicked = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        const dataUrl = await fileToDataUrl(file);
+        journal.addPhoto(id, dataUrl);
+      }
+      setMetaOpen(true);
+    } catch (e) {
+      console.error(e);
+      setPhotoError(
+        e instanceof DOMException && e.name === 'QuotaExceededError'
+          ? 'Stockage plein — retire une photo ou un jour.'
+          : 'Impossible d’ajouter cette photo.',
+      );
+    } finally {
+      setPhotoBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -159,11 +173,32 @@ export function DayPage({ journal }: Props) {
                 </div>
               </div>
             ))}
-            <button type="button" className="add-photo" onClick={addPhoto}>
+                        <button
+              type="button"
+              className="add-photo"
+              onClick={openPhotoPicker}
+              disabled={photoBusy}
+            >
               <span aria-hidden="true">＋</span>
-              Encore
+              {photoBusy ? 'Ajout…' : 'Ajouter'}
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              capture="environment"
+              hidden
+              onChange={(e) => onPhotosPicked(e.target.files)}
+            />
+
           </div>
+
+          {photoError ? (
+            <p className="muted" style={{ marginTop: 10 }} role="alert">
+              {photoError}
+            </p>
+          ) : null}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
             <button
