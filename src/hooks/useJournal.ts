@@ -60,9 +60,30 @@ function emptyDay(id: string): DayEntry {
   };
 }
 
-/** Ensure tags exist and are normalized (old entries / imports). */
+function normalizeOptionalCoord(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+/** Ensure tags + optional lat/lon are sane (old entries / imports). Missing → absent. */
 function migrateDay(day: DayEntry): DayEntry {
-  return { ...day, tags: normalizeTags(day.tags) };
+  const lat = normalizeOptionalCoord(day.lat);
+  const lon = normalizeOptionalCoord(day.lon);
+  const next: DayEntry = { ...day, tags: normalizeTags(day.tags) };
+  // Only keep a pin when both coords are valid numbers
+  if (lat !== undefined && lon !== undefined) {
+    next.lat = lat;
+    next.lon = lon;
+  } else {
+    delete next.lat;
+    delete next.lon;
+  }
+  return next;
 }
 
 function migrateDays(days: Record<string, DayEntry>): Record<string, DayEntry> {
@@ -799,6 +820,15 @@ export function useJournal() {
   };
 }
 
+export function hasPreciseCoords(d: DayEntry): boolean {
+  return (
+    typeof d.lat === 'number' &&
+    Number.isFinite(d.lat) &&
+    typeof d.lon === 'number' &&
+    Number.isFinite(d.lon)
+  );
+}
+
 export function hasContent(d: DayEntry): boolean {
   return !!(
     d.title.trim() ||
@@ -806,7 +836,8 @@ export function hasContent(d: DayEntry): boolean {
     d.mood ||
     d.location.trim() ||
     (d.tags && d.tags.length) ||
-    d.photos.length
+    d.photos.length ||
+    hasPreciseCoords(d)
   );
 }
 

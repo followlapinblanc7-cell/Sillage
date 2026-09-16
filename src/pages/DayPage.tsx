@@ -257,7 +257,11 @@ export function DayPage({ journal }: Props) {
                 lat: pos.coords.latitude,
                 lon: pos.coords.longitude,
               });
-              journal.updateDay(id, { location: outcome.label });
+              journal.updateDay(id, {
+                location: outcome.label,
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+              });
               setGeoError(null);
             } else if (outcome.status === 'miss') {
               setGeoError('Introuvable');
@@ -370,9 +374,21 @@ export function DayPage({ journal }: Props) {
               <div className="lieu-row">
                 <LieuField
                   value={day.location}
-                  onChange={(location) => {
+                  onChange={(location, geo) => {
                     setGeoError(null);
-                    journal.updateDay(id, { location });
+                    if (geo) {
+                      journal.updateDay(id, {
+                        location,
+                        lat: geo.lat,
+                        lon: geo.lon,
+                      });
+                    } else {
+                      journal.updateDay(id, {
+                        location,
+                        lat: null,
+                        lon: null,
+                      });
+                    }
                   }}
                 />
                 {geoSupported ? (
