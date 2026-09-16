@@ -398,6 +398,9 @@ export function LieuxPage({ journal }: Props) {
         </Link>
         <h1 className="page-title">Lieux</h1>
         <p className="page-sub">Des traces d&apos;endroits gardés</p>
+        <Link to="/monde" className="lieux-monde-link">
+          Ouvrir Monde
+        </Link>
         <div className="empty-state">
           <p className="empty-quote">
             « Les lieux n&apos;attendent que d&apos;être nommés. »
@@ -444,6 +447,9 @@ export function LieuxPage({ journal }: Props) {
       </Link>
       <h1 className="page-title">Lieux</h1>
       <p className="page-sub">{subCopy}</p>
+      <Link to="/monde" className="lieux-monde-link">
+        Ouvrir Monde
+      </Link>
 
       <p className="lieux-a11y-live" aria-live="polite">
         {liveAnnouncement}

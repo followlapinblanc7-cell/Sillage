@@ -8,6 +8,7 @@ import { ChercherPage } from './pages/ChercherPage';
 import { DayPage } from './pages/DayPage';
 import { FilPage } from './pages/FilPage';
 import { LieuxPage } from './pages/LieuxPage';
+import { MondePage } from './pages/MondePage';
 import { TiroirPage } from './pages/TiroirPage';
 
 function DayRoute({ journal }: { journal: ReturnType<typeof useJournal> }) {
@@ -31,6 +32,7 @@ function AppRoutes() {
           <Route path="/chercher" element={<ChercherPage journal={journal} />} />
           <Route path="/tiroir" element={<TiroirPage journal={journal} />} />
           <Route path="/lieux" element={<LieuxPage journal={journal} />} />
+          <Route path="/monde" element={<MondePage journal={journal} />} />
           <Route path="/jour/:id" element={<DayRoute journal={journal} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

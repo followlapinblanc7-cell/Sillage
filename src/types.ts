@@ -20,6 +20,9 @@ export interface DayEntry {
   story: string;
   mood: MoodId | null;
   location: string;
+  /** Precise map pin (WGS84). Absent when unknown; null clears a prior pin. */
+  lat?: number | null;
+  lon?: number | null;
   /** Free-form labels; preserve casing, case-insensitive unique */
   tags: string[];
   photos: Photo[];

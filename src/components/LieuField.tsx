@@ -22,7 +22,8 @@ interface SuggestItem {
 
 interface Props {
   value: string;
-  onChange: (value: string) => void;
+  /** Second arg: precise coords when picking a suggestion; null when free-typing (clears pin). */
+  onChange: (value: string, geo?: { lat: number; lon: number } | null) => void;
 }
 
 export function LieuField({ value, onChange }: Props) {
@@ -157,7 +158,7 @@ export function LieuField({ value, onChange }: Props) {
     pickLockRef.current = true;
     rememberPlace(item.label, { lat: item.lat, lon: item.lon });
     setRecents(listRecentPlaces());
-    onChange(item.label);
+    onChange(item.label, { lat: item.lat, lon: item.lon });
     closeList();
     // Allow typing again after the value settles
     requestAnimationFrame(() => {
@@ -168,7 +169,8 @@ export function LieuField({ value, onChange }: Props) {
 
   const onInputChange = (next: string) => {
     if (pickLockRef.current) return;
-    onChange(next);
+    // Free typing no longer matches a precise pick — clear stored pin
+    onChange(next, null);
     setStatus('idle');
     scheduleSearch(next);
   };

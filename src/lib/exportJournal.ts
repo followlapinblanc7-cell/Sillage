@@ -5,6 +5,15 @@ import { normalizeTheme } from './theme';
 
 export { materializePhotosForExport } from './photoStore';
 
+function hasPreciseCoords(d: DayEntry): boolean {
+  return (
+    typeof d.lat === 'number' &&
+    Number.isFinite(d.lat) &&
+    typeof d.lon === 'number' &&
+    Number.isFinite(d.lon)
+  );
+}
+
 function hasContent(d: DayEntry): boolean {
   return !!(
     d.title.trim() ||
@@ -12,7 +21,8 @@ function hasContent(d: DayEntry): boolean {
     d.mood ||
     d.location.trim() ||
     (d.tags && d.tags.length) ||
-    d.photos.length
+    d.photos.length ||
+    hasPreciseCoords(d)
   );
 }
 
@@ -98,7 +108,19 @@ export async function parseBackupFile(file: File): Promise<JournalState> {
   }
   const days: Record<string, DayEntry> = {};
   for (const [id, day] of Object.entries(parsed.days)) {
-    days[id] = { ...day, tags: normalizeTags(day.tags) };
+    const lat =
+      typeof day.lat === 'number' && Number.isFinite(day.lat) ? day.lat : undefined;
+    const lon =
+      typeof day.lon === 'number' && Number.isFinite(day.lon) ? day.lon : undefined;
+    const next: DayEntry = { ...day, tags: normalizeTags(day.tags) };
+    if (lat !== undefined && lon !== undefined) {
+      next.lat = lat;
+      next.lon = lon;
+    } else {
+      delete next.lat;
+      delete next.lon;
+    }
+    days[id] = next;
   }
   return {
     ...parsed,

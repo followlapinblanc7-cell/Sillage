@@ -33,8 +33,21 @@ export interface LeafletMap {
   invalidateSize: () => void;
   removeLayer: (layer: unknown) => void;
   closePopup: () => LeafletMap;
-  on: (event: string, fn: () => void) => LeafletMap;
-  off: (event: string, fn: () => void) => LeafletMap;
+  on: (
+    event: string,
+    fn: (e?: {
+      latlng?: { lat: number; lng: number };
+      originalEvent?: Event;
+    }) => void,
+  ) => LeafletMap;
+  off: (
+    event: string,
+    fn: (e?: {
+      latlng?: { lat: number; lng: number };
+      originalEvent?: Event;
+    }) => void,
+  ) => LeafletMap;
+  getCenter: () => LeafletLatLng;
 }
 
 export interface LeafletMarker {
