@@ -12,6 +12,10 @@ import {
   type GeocodeOutcome,
 } from '../lib/geocode';
 import {
+  continentOf,
+  loadContinents,
+} from '../lib/continents';
+import {
   isWebGLAvailable,
   loadGlobe,
   type GlobeInstance,
@@ -19,9 +23,15 @@ import {
 import {
   GLOBE_ATMOSPHERE,
   GLOBE_BG,
+  GLOBE_CONTINENT_CAP,
+  GLOBE_CONTINENT_FALLBACK,
+  GLOBE_CONTINENT_SIDE,
+  GLOBE_CONTINENT_STROKE,
+  GLOBE_NIGHT_EMISSIVE,
   GLOBE_PIN,
   GLOBE_STARFIELD_URL,
   nightGlobeImageUrl,
+  type ThemeId,
 } from '../lib/theme';
 import type { DayEntry } from '../types';
 
@@ -42,6 +52,35 @@ const VIEW_KEY = 'sillage-monde-globe-view-v1';
 const DEFAULT_POV = { lat: 20, lng: 8, altitude: 2.35 };
 const PENDING_ID = '__pending__';
 
+function applyContinentStyle(globe: GlobeInstance, theme: ThemeId) {
+  const caps = GLOBE_CONTINENT_CAP[theme];
+  const fallback = GLOBE_CONTINENT_FALLBACK[theme];
+  globe
+    .polygonCapColor((d) => caps[continentOf(d)] ?? fallback)
+    .polygonSideColor(() => GLOBE_CONTINENT_SIDE[theme])
+    .polygonStrokeColor(() => GLOBE_CONTINENT_STROKE[theme]);
+}
+
+/** Lift city lights / lit land via emissiveMap; near-black oceans stay dark. */
+function enhanceNightMaterial(globe: GlobeInstance) {
+  const mat = globe.globeMaterial?.();
+  if (!mat) return;
+  const apply = () => {
+    if (!mat.map) return false;
+    mat.emissiveMap = mat.map;
+    mat.emissive?.set(GLOBE_NIGHT_EMISSIVE.color);
+    mat.emissiveIntensity = GLOBE_NIGHT_EMISSIVE.intensity;
+    mat.color?.set('#ffffff');
+    mat.needsUpdate = true;
+    return true;
+  };
+  if (apply()) return;
+  let tries = 0;
+  const id = window.setInterval(() => {
+    tries += 1;
+    if (apply() || tries > 50) window.clearInterval(id);
+  }, 80);
+}
 
 interface GlobePoint {
   id: string;
@@ -326,6 +365,11 @@ export function MondePage({ journal }: Props) {
           .showAtmosphere(true)
           .atmosphereColor(atm.color)
           .atmosphereAltitude(atm.altitude)
+          .polygonsTransitionDuration(0)
+          .polygonAltitude(0.0035)
+          .polygonLabel(() => null)
+          .polygonGeoJsonGeometry('geometry')
+          .pointerEventsFilter((obj) => obj.__globeObjType !== 'polygon')
           .pointsMerge(false)
           .pointLat('lat')
           .pointLng('lng')
@@ -405,12 +449,23 @@ export function MondePage({ journal }: Props) {
         ).addEventListener?.('change', onControlsChange);
 
         globeRef.current = globe;
+        applyContinentStyle(globe, theme);
         applyPoints(globe);
+        enhanceNightMaterial(globe);
+        globe.onGlobeReady(() => enhanceNightMaterial(globe));
         setGlobeReady(true);
         setGlobeError(false);
         setWebglMissing(false);
 
-        // Night lights texture only — no continent polygon fills (photo wins).
+        // Soft amber land washes over night lights (oceans stay dark).
+        void loadContinents()
+          .then((features) => {
+            if (cancelled || globeRef.current !== globe) return;
+            globe.polygonsData(features);
+          })
+          .catch(() => {
+            /* night texture alone — pins still work */
+          });
 
         resizeObs = new ResizeObserver(() => syncSize());
         resizeObs.observe(el);
@@ -466,7 +521,7 @@ export function MondePage({ journal }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Theme: night Earth stays cinematic; only rim / space tint shifts slightly
+  // Theme: night Earth stays cinematic; rim / land-wash / space tint shift slightly
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !globeReady) return;
@@ -477,6 +532,8 @@ export function MondePage({ journal }: Props) {
       .globeImageUrl(nightGlobeImageUrl(journal.theme))
       .atmosphereColor(atm.color)
       .atmosphereAltitude(atm.altitude);
+    applyContinentStyle(globe, journal.theme);
+    enhanceNightMaterial(globe);
   }, [journal.theme, globeReady]);
 
   // Pause auto-rotate while placing or previewing
