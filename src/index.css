@@ -2566,6 +2566,49 @@ img {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Night-space stage — keep cream app theme from leaking around the globe. */
+  background: #02040a;
+}
+
+/* Monde chrome over space: stay light even when the app theme is literary day. */
+[data-theme='light'] .monde-page .monde-title {
+  color: #f5ede4;
+  text-shadow: 0 1px 14px rgba(2, 4, 10, 0.85);
+}
+
+[data-theme='light'] .monde-page .monde-sub {
+  color: rgba(245, 237, 228, 0.62);
+  text-shadow: 0 1px 12px rgba(2, 4, 10, 0.8);
+}
+
+[data-theme='light'] .monde-page .monde-place-btn {
+  border-color: rgba(245, 237, 228, 0.22);
+  background: rgba(18, 22, 32, 0.82);
+  color: #f5ede4;
+}
+
+[data-theme='light'] .monde-page .monde-place-btn.active {
+  border-color: #b85151;
+  color: #e8b4b4;
+  background: rgba(139, 58, 58, 0.28);
+}
+
+[data-theme='light'] .monde-page .monde-hint,
+[data-theme='light'] .monde-page .monde-status {
+  background: rgba(12, 16, 24, 0.78);
+  color: rgba(245, 237, 228, 0.58);
+}
+
+[data-theme='light'] .monde-page .monde-globe-loading {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(8, 10, 18, 0.55),
+    rgba(4, 6, 12, 0.88)
+  );
+}
+
+[data-theme='light'] .monde-page .monde-globe-loading p {
+  color: rgba(245, 237, 228, 0.7);
 }
 
 .monde-top {
@@ -2626,7 +2669,7 @@ img {
   flex: 1;
   min-height: 0;
   margin-top: -52px;
-  /* Night Earth always — deep space under starfield (even in light app theme). */
+  /* Night-space stage under starfield (even in light app theme). */
   background: #02040a;
 }
 
