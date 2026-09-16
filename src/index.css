@@ -9,9 +9,9 @@
   --border-strong: rgba(245, 237, 228, 0.16);
   --text: #f5ede4;
   --text-muted: rgba(245, 237, 228, 0.62);
-  --text-faint: rgba(245, 237, 228, 0.38);
+  --text-faint: rgba(245, 237, 228, 0.42);
   --accent: #8b3a3a;
-  --accent-bright: #a84848;
+  --accent-bright: #b85151;
   --accent-soft: rgba(139, 58, 58, 0.22);
   --cream: #f5ede4;
   --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
@@ -255,7 +255,7 @@ img {
 .nav-item.active {
   color: var(--cream);
   background: rgba(139, 58, 58, 0.32);
-  box-shadow: inset 0 0 0 1px rgba(168, 72, 72, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(184, 81, 81, 0.35);
 }
 
 .nav-item.active svg {
@@ -282,7 +282,7 @@ img {
 }
 
 .day-card.featured {
-  border-color: rgba(168, 72, 72, 0.45);
+  border-color: rgba(184, 81, 81, 0.45);
   background: linear-gradient(160deg, #32221e 0%, #241814 100%);
 }
 
@@ -396,7 +396,7 @@ img {
 
 .week-today-chip:hover {
   color: var(--cream);
-  border-color: rgba(168, 72, 72, 0.45);
+  border-color: rgba(184, 81, 81, 0.45);
   background: var(--accent-soft);
 }
 
@@ -529,7 +529,7 @@ img {
   justify-content: space-between;
   gap: 12px;
   background: var(--accent-soft);
-  border: 1px solid rgba(168, 72, 72, 0.35);
+  border: 1px solid rgba(184, 81, 81, 0.35);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   margin-bottom: 16px;
@@ -559,7 +559,7 @@ img {
   justify-content: space-between;
   gap: 12px;
   background: rgba(40, 28, 28, 0.55);
-  border: 1px solid rgba(168, 72, 72, 0.28);
+  border: 1px solid rgba(184, 81, 81, 0.28);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   margin-bottom: 16px;
@@ -614,7 +614,7 @@ img {
   display: flex;
   flex-direction: column;
   background: linear-gradient(165deg, #32221e 0%, #241814 100%);
-  border: 1px solid rgba(168, 72, 72, 0.4);
+  border: 1px solid rgba(184, 81, 81, 0.4);
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 16px;
@@ -710,7 +710,7 @@ img {
   justify-content: space-between;
   gap: 12px;
   background: rgba(40, 28, 28, 0.55);
-  border: 1px solid rgba(168, 72, 72, 0.28);
+  border: 1px solid rgba(184, 81, 81, 0.28);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   font-size: 0.85rem;
@@ -791,12 +791,12 @@ img {
 .back-btn:hover,
 .back-btn:focus-visible {
   color: var(--cream);
-  border-color: rgba(168, 72, 72, 0.45);
+  border-color: rgba(184, 81, 81, 0.45);
   background: var(--accent-soft);
 }
 
 .back-btn:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.55);
+  outline: 2px solid rgba(184, 81, 81, 0.55);
   outline-offset: 2px;
 }
 
@@ -807,7 +807,7 @@ img {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent-bright);
-  border: 1px solid rgba(168, 72, 72, 0.4);
+  border: 1px solid rgba(184, 81, 81, 0.4);
   background: var(--accent-soft);
   border-radius: 999px;
   padding: 5px 11px;
@@ -923,7 +923,7 @@ img {
 }
 
 .meta-toggle:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.55);
+  outline: 2px solid rgba(184, 81, 81, 0.55);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -988,7 +988,7 @@ img {
 }
 
 .lieu-input:focus {
-  border-color: rgba(168, 72, 72, 0.5);
+  border-color: rgba(184, 81, 81, 0.5);
 }
 
 .lieu-gps-btn {
@@ -1079,7 +1079,7 @@ img {
 .lieu-suggest-option.active,
 .lieu-suggest-option:hover {
   background: var(--accent-soft);
-  border-color: rgba(168, 72, 72, 0.35);
+  border-color: rgba(184, 81, 81, 0.35);
 }
 
 .lieu-suggest-label {
@@ -1125,13 +1125,13 @@ img {
 }
 
 .mood-chip:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.55);
+  outline: 2px solid rgba(184, 81, 81, 0.55);
   outline-offset: 2px;
 }
 
 .mood-chip.active {
   background: var(--accent-soft);
-  border-color: rgba(168, 72, 72, 0.55);
+  border-color: rgba(184, 81, 81, 0.55);
   color: var(--cream);
 }
 
@@ -1159,18 +1159,18 @@ img {
 }
 
 .tag-chip:hover {
-  border-color: rgba(168, 72, 72, 0.35);
+  border-color: rgba(184, 81, 81, 0.35);
   color: var(--cream);
 }
 
 .tag-chip:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.55);
+  outline: 2px solid rgba(184, 81, 81, 0.55);
   outline-offset: 2px;
 }
 
 .tag-chip.filter.active,
 .tag-chip.active {
-  border-color: rgba(168, 72, 72, 0.45);
+  border-color: rgba(184, 81, 81, 0.45);
   background: var(--accent-soft);
   color: var(--cream);
 }
@@ -1201,7 +1201,7 @@ img {
 }
 
 .tag-input:focus {
-  border-bottom-color: rgba(168, 72, 72, 0.5);
+  border-bottom-color: rgba(184, 81, 81, 0.5);
 }
 
 .tag-input::placeholder {
@@ -1273,7 +1273,7 @@ img {
 }
 
 .photo-actions button:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.65);
+  outline: 2px solid rgba(184, 81, 81, 0.65);
   outline-offset: 2px;
 }
 
@@ -1301,13 +1301,13 @@ img {
 
 .add-photo:hover:not(:disabled),
 .add-photo:focus-visible:not(:disabled) {
-  border-color: rgba(168, 72, 72, 0.5);
+  border-color: rgba(184, 81, 81, 0.5);
   color: var(--cream);
   background: var(--accent-soft);
 }
 
 .add-photo:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.55);
+  outline: 2px solid rgba(184, 81, 81, 0.55);
   outline-offset: 2px;
 }
 
@@ -1346,7 +1346,7 @@ img {
 }
 
 .day-action-btn.is-on {
-  border-color: rgba(168, 72, 72, 0.5);
+  border-color: rgba(184, 81, 81, 0.5);
   background: var(--accent-soft);
   color: var(--cream);
 }
@@ -1476,7 +1476,7 @@ img {
 }
 
 .search-input:focus {
-  border-color: rgba(168, 72, 72, 0.5);
+  border-color: rgba(184, 81, 81, 0.5);
 }
 
 .search-results {
@@ -1502,7 +1502,7 @@ img {
 }
 
 .search-result:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.65);
+  outline: 2px solid rgba(184, 81, 81, 0.65);
   outline-offset: 2px;
 }
 
@@ -1713,7 +1713,7 @@ img {
 }
 
 .photo-sheet-close:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.65);
+  outline: 2px solid rgba(184, 81, 81, 0.65);
   outline-offset: 2px;
 }
 
@@ -1771,7 +1771,7 @@ img {
 }
 
 .photo-sheet-gallery:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.65);
+  outline: 2px solid rgba(184, 81, 81, 0.65);
   outline-offset: 2px;
 }
 
@@ -1818,7 +1818,7 @@ img {
 }
 .toggle.on {
   background: var(--accent-soft);
-  border-color: rgba(168, 72, 72, 0.55);
+  border-color: rgba(184, 81, 81, 0.55);
 }
 .toggle-knob {
   position: absolute;
@@ -1852,7 +1852,7 @@ img {
 }
 .hour-chip.active {
   color: var(--cream);
-  border-color: rgba(168, 72, 72, 0.55);
+  border-color: rgba(184, 81, 81, 0.55);
   background: var(--accent-soft);
 }
 
@@ -1893,7 +1893,7 @@ img {
 }
 
 .coffre-pin-input:focus {
-  border-color: rgba(168, 72, 72, 0.5);
+  border-color: rgba(184, 81, 81, 0.5);
 }
 
 .coffre-pin-input::placeholder {
@@ -2242,7 +2242,7 @@ img {
 }
 
 .lieux-day-link:focus-visible {
-  outline: 2px solid rgba(168, 72, 72, 0.65);
+  outline: 2px solid rgba(184, 81, 81, 0.65);
   outline-offset: 2px;
 }
 
