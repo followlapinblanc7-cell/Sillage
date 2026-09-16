@@ -851,6 +851,28 @@ export function pickTraceDay(
   return sorted[idx] ?? null;
 }
 
+
+/**
+ * Past-year days with the same calendar month-day (MM-DD).
+ * Expects already-visible days (non-private, with content); newest year first.
+ */
+export function sameDayPastYears(
+  days: DayEntry[],
+  dateId: string,
+): DayEntry[] {
+  const md = dateId.slice(5); // MM-DD
+  const year = Number(dateId.slice(0, 4));
+  if (!md || !Number.isFinite(year)) return [];
+  return days
+    .filter((d) => {
+      if (d.id === dateId) return false;
+      if (d.id.slice(5) !== md) return false;
+      const y = Number(d.id.slice(0, 4));
+      return Number.isFinite(y) && y < year && hasContent(d) && !d.private;
+    })
+    .sort((a, b) => b.id.localeCompare(a.id));
+}
+
 export function coverPhoto(d: DayEntry): string | null {
   const pinned = d.photos.find((p) => p.pinned);
   if (pinned) return pinned.url;
