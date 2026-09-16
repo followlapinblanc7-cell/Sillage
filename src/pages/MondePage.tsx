@@ -124,7 +124,7 @@ function applyGraticule(globe: GlobeInstance, theme: ThemeId) {
     .pathPointAlt(0.0012)
     .pathColor(() => g.color)
     .pathStroke(g.stroke)
-    .pathsTransitionDuration(0);
+    .pathTransitionDuration(0);
 }
 
 interface GlobePoint {
