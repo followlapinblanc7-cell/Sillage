@@ -38,6 +38,7 @@ import {
   GLOBE_COUNTRY_STROKE,
   GLOBE_GRATICULE,
   GLOBE_PIN,
+  GLOBE_STARFIELD_URL,
   oceanGlobeImageUrl,
   type ThemeId,
 } from '../lib/theme';
@@ -431,7 +432,7 @@ export function MondePage({ journal }: Props) {
           rendererConfig: globeRendererConfig(),
         })
           .backgroundColor(GLOBE_BG[theme])
-          .backgroundImageUrl(null)
+          .backgroundImageUrl(GLOBE_STARFIELD_URL)
           .globeImageUrl(oceanGlobeImageUrl(theme))
           .showAtmosphere(true)
           .atmosphereColor(atm.color)
@@ -633,14 +634,14 @@ export function MondePage({ journal }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globeBootKey]);
 
-  // Theme: political atlas ocean / fills / rim shift with dark & light UI
+  // Theme: night-space political atlas (ocean / fills / rim / starfield)
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !globeReady) return;
     const atm = GLOBE_ATMOSPHERE[journal.theme];
     globe
       .backgroundColor(GLOBE_BG[journal.theme])
-      .backgroundImageUrl(null)
+      .backgroundImageUrl(GLOBE_STARFIELD_URL)
       .globeImageUrl(oceanGlobeImageUrl(journal.theme))
       .atmosphereColor(atm.color)
       .atmosphereAltitude(atm.altitude);

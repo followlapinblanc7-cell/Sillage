@@ -13,15 +13,21 @@ export const CARTO_TILES: Record<ThemeId, string> = {
 };
 
 /**
- * Monde 3D — drawn political / atlas globe (not satellite or night-Earth).
- * Solid ocean plate + country polygons (Natural Earth 110m). Night photo /
- * starfield / emissive city-lights path is idle in this mode.
+ * Monde 3D — drawn political / atlas globe on a night-space stage.
+ * Solid ocean plate + country polygons (Natural Earth 110m). Same cinematic
+ * dark look for dark and light app themes (cream UI must not leak behind the
+ * sphere). Starfield via three-globe night-sky CDN (runtime fetch, not SW).
+ * Do not restore earth-night.jpg photo continents.
  */
 
-/** Calm ocean ink under country polygons. */
+/** Starfield / space backdrop for globe.gl `backgroundImageUrl`. */
+export const GLOBE_STARFIELD_URL =
+  'https://cdn.jsdelivr.net/npm/three-globe@2.45.2/example/img/night-sky.png';
+
+/** Near charcoal / ink ocean under country polygons. */
 export const GLOBE_OCEAN: Record<ThemeId, string> = {
-  dark: '#1c2830',
-  light: '#b9c8d2',
+  dark: '#0a0e14',
+  light: '#0a0e14',
 };
 
 const oceanUrlCache: Partial<Record<ThemeId, string>> = {};
@@ -46,72 +52,65 @@ export function oceanGlobeImageUrl(theme: ThemeId): string {
 }
 
 /**
- * Small categorical country palette (warm paper / ink family).
- * Index via country a3 hash so neighbours often differ.
+ * Richer / darker muted country fills (still distinguishable).
+ * Same night atlas palette for both app themes.
  */
+const NIGHT_COUNTRY_PALETTE = [
+  'rgba(118, 76, 56, 0.94)',
+  'rgba(86, 70, 98, 0.94)',
+  'rgba(128, 86, 60, 0.94)',
+  'rgba(58, 84, 108, 0.94)',
+  'rgba(64, 96, 72, 0.94)',
+  'rgba(48, 88, 86, 0.94)',
+  'rgba(108, 78, 64, 0.94)',
+  'rgba(92, 68, 104, 0.94)',
+] as const;
+
 export const GLOBE_COUNTRY_PALETTE: Record<ThemeId, string[]> = {
-  dark: [
-    'rgba(158, 108, 78, 0.94)',
-    'rgba(138, 112, 122, 0.94)',
-    'rgba(168, 120, 88, 0.94)',
-    'rgba(108, 126, 140, 0.94)',
-    'rgba(112, 132, 104, 0.94)',
-    'rgba(96, 128, 124, 0.94)',
-    'rgba(148, 118, 98, 0.94)',
-    'rgba(124, 108, 128, 0.94)',
-  ],
-  light: [
-    'rgba(186, 136, 100, 0.93)',
-    'rgba(158, 130, 140, 0.93)',
-    'rgba(198, 150, 108, 0.93)',
-    'rgba(126, 146, 162, 0.93)',
-    'rgba(132, 156, 122, 0.93)',
-    'rgba(116, 150, 146, 0.93)',
-    'rgba(172, 138, 112, 0.93)',
-    'rgba(146, 128, 150, 0.93)',
-  ],
+  dark: [...NIGHT_COUNTRY_PALETTE],
+  light: [...NIGHT_COUNTRY_PALETTE],
 };
 
-/** Antarctica / unknown — cooler parchment. */
+/** Antarctica / unknown — cool slate. */
 export const GLOBE_COUNTRY_FALLBACK: Record<ThemeId, string> = {
-  dark: 'rgba(150, 144, 136, 0.88)',
-  light: 'rgba(168, 160, 152, 0.86)',
+  dark: 'rgba(118, 124, 136, 0.86)',
+  light: 'rgba(118, 124, 136, 0.86)',
 };
 
 export const GLOBE_COUNTRY_SIDE: Record<ThemeId, string> = {
-  dark: 'rgba(28, 22, 18, 0.28)',
-  light: 'rgba(70, 55, 45, 0.14)',
+  dark: 'rgba(6, 8, 12, 0.42)',
+  light: 'rgba(6, 8, 12, 0.42)',
 };
 
-/** Thin ink borders so political outlines read clearly. */
+/** Soft hairline borders so political outlines read on dark fills. */
 export const GLOBE_COUNTRY_STROKE: Record<ThemeId, string> = {
-  dark: 'rgba(28, 22, 18, 0.55)',
-  light: 'rgba(78, 58, 44, 0.38)',
+  dark: 'rgba(200, 190, 168, 0.22)',
+  light: 'rgba(200, 190, 168, 0.2)',
 };
 
 /** Subtle graticule (paths). */
 export const GLOBE_GRATICULE: Record<ThemeId, { color: string; stroke: number }> =
   {
-    dark: { color: 'rgba(210, 190, 160, 0.09)', stroke: 0.35 },
-    light: { color: 'rgba(70, 55, 45, 0.1)', stroke: 0.35 },
+    dark: { color: 'rgba(170, 180, 210, 0.07)', stroke: 0.32 },
+    light: { color: 'rgba(170, 180, 210, 0.06)', stroke: 0.32 },
   };
 
-/** Soft warm atmospheric rim — atlas, not Earth-from-space blue. */
+/** Soft blue / violet atmospheric rim — space, not bright day-atlas. */
 export const GLOBE_ATMOSPHERE: Record<
   ThemeId,
   { color: string; altitude: number }
 > = {
-  dark: { color: 'rgba(184, 140, 100, 0.42)', altitude: 0.15 },
-  light: { color: 'rgba(196, 160, 120, 0.38)', altitude: 0.14 },
+  dark: { color: 'rgba(120, 130, 200, 0.48)', altitude: 0.2 },
+  light: { color: 'rgba(130, 138, 210, 0.42)', altitude: 0.18 },
 };
 
-/** Soft space / paper backdrop (no starfield photo). */
+/** Deep space behind the starfield texture (fallback while image loads). */
 export const GLOBE_BG: Record<ThemeId, string> = {
-  dark: 'rgba(18, 14, 12, 1)',
-  light: 'rgba(236, 228, 216, 1)',
+  dark: 'rgba(2, 4, 10, 1)',
+  light: 'rgba(2, 4, 10, 1)',
 };
 
-/** Warm cream / soft gold — readable on muted country fills. */
+/** Warm cream / soft gold — readable on dark country fills. */
 export const GLOBE_PIN = {
   idle: '#f2e4c0',
   active: '#fff8e4',
