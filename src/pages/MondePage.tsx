@@ -17,9 +17,15 @@ import {
   loadCountries,
 } from '../lib/countries';
 import {
-  GlobeLoadError,
+  classifyGlobeRuntimeError,
+  destroyGlobe,
+  globePixelRatioCap,
+  globeRendererConfig,
+  isConstrainedGpu,
   isWebGLAvailable,
   loadGlobe,
+  shortErrorMessage,
+  waitForElementSize,
   type GlobeFailReason,
   type GlobeInstance,
 } from '../lib/loadGlobe';
@@ -235,6 +241,8 @@ export function MondePage({ journal }: Props) {
   const [globeReady, setGlobeReady] = useState(false);
   const [globeError, setGlobeError] = useState(false);
   const [failReason, setFailReason] = useState<GlobeFailReason | null>(null);
+  const [failDetail, setFailDetail] = useState<string | null>(null);
+  const [globeBootKey, setGlobeBootKey] = useState(0);
   const [countriesMissing, setCountriesMissing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [placePhase, setPlacePhase] = useState<PlacePhase>('idle');
@@ -354,13 +362,21 @@ export function MondePage({ journal }: Props) {
     );
   };
 
-  // Init globe once
+  // Init globe once per boot key (retry / StrictMode-safe)
   useEffect(() => {
     const el = globeElRef.current;
     if (!el) return;
+    // Reset paint flags at each boot (StrictMode remount / Réessayer).
+    setGlobeReady(false);
+    setGlobeError(false);
+    setFailReason(null);
+    setFailDetail(null);
     let cancelled = false;
+    const cancelFlag = { cancelled: false };
     let resizeObs: ResizeObserver | null = null;
     let saveTimer: number | null = null;
+    let polygonTimer: number | null = null;
+    let created: GlobeInstance | null = null;
 
     const syncSize = () => {
       const g = globeRef.current;
@@ -375,29 +391,44 @@ export function MondePage({ journal }: Props) {
 
     const onWinResize = () => syncSize();
 
+    const fail = (err: unknown) => {
+      if (cancelled) return;
+      setGlobeError(true);
+      setGlobeReady(false);
+      setFailReason(classifyGlobeRuntimeError(err));
+      const detail = shortErrorMessage(err);
+      setFailDetail(detail || null);
+      if (import.meta.env.DEV && detail) {
+        console.warn('[Monde] globe init failed', err);
+      }
+    };
+
     (async () => {
       try {
         if (!isWebGLAvailable()) {
-          if (!cancelled) {
-            setFailReason('webgl');
-            setGlobeError(true);
-            setGlobeReady(false);
-          }
+          fail(new Error('WebGL indisponible'));
           return;
         }
+
+        // Flex layout often reports 0×0 on the first paint — wait for a real box.
+        const size = await waitForElementSize(el, { signal: cancelFlag });
+        if (cancelled) return;
+
+        // One frame after layout so Android Chrome finishes compositing the host.
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        if (cancelled) return;
+
         const Globe = await loadGlobe();
         if (cancelled) return;
 
         const theme = journal.theme;
         const atm = GLOBE_ATMOSPHERE[theme];
         const saved = readSavedView();
+        const mobile = isConstrainedGpu();
+        const polyAlt = mobile ? 0.002 : 0.0035;
 
         const globe = new Globe(el, {
-          rendererConfig: {
-            antialias: true,
-            alpha: false,
-            powerPreference: 'high-performance',
-          },
+          rendererConfig: globeRendererConfig(),
         })
           .backgroundColor(GLOBE_BG[theme])
           .backgroundImageUrl(null)
@@ -406,7 +437,7 @@ export function MondePage({ journal }: Props) {
           .atmosphereColor(atm.color)
           .atmosphereAltitude(atm.altitude)
           .polygonsTransitionDuration(0)
-          .polygonAltitude(0.0035)
+          .polygonAltitude(polyAlt)
           .polygonLabel(() => null)
           .polygonGeoJsonGeometry('geometry')
           .pointerEventsFilter((obj) => obj.__globeObjType !== 'polygon')
@@ -448,6 +479,22 @@ export function MondePage({ journal }: Props) {
             setSelectedId(null);
           });
 
+        if (cancelled) {
+          destroyGlobe(globe, el);
+          return;
+        }
+
+        created = globe;
+
+        try {
+          const renderer = globe.renderer?.();
+          const cap = globePixelRatioCap();
+          const dpr = Math.min(cap, window.devicePixelRatio || 1);
+          renderer?.setPixelRatio?.(dpr);
+        } catch {
+          /* ignore */
+        }
+
         const controls = globe.controls();
         controls.autoRotate = true;
         controls.autoRotateSpeed = 0.25;
@@ -455,6 +502,8 @@ export function MondePage({ journal }: Props) {
         controls.minDistance = 120;
         controls.maxDistance = 500;
 
+        globe.width(size.width);
+        globe.height(size.height);
         globe.pointOfView(saved, 0);
         syncSize();
 
@@ -481,7 +530,6 @@ export function MondePage({ journal }: Props) {
             if (globeRef.current) saveView(globeRef.current);
           }, 350);
         };
-        // three.js OrbitControls emits 'change'
         (
           controls as unknown as {
             addEventListener?: (t: string, fn: () => void) => void;
@@ -493,29 +541,48 @@ export function MondePage({ journal }: Props) {
         applyGraticule(globe, theme);
         applyPoints(globe);
         clearNightEmissive(globe);
-        globe.onGlobeReady(() => clearNightEmissive(globe));
+        globe.onGlobeReady(() => {
+          clearNightEmissive(globe);
+          // Defer heavy country meshes until after the first painted frame.
+          if (cancelled || globeRef.current !== globe) return;
+          const kickPolygons = () => {
+            if (cancelled || globeRef.current !== globe) return;
+            void loadCountries()
+              .then((features) => {
+                if (cancelled || globeRef.current !== globe) return;
+                // Mid Android: drop Antarctica to cut the heaviest multipolygon.
+                const data = mobile
+                  ? features.filter((f) => continentOf(f) !== 'Antarctica')
+                  : features;
+                try {
+                  globe.polygonsData(data);
+                  setCountriesMissing(false);
+                } catch (polyErr) {
+                  if (!cancelled) {
+                    setCountriesMissing(true);
+                    if (import.meta.env.DEV) {
+                      console.warn('[Monde] polygons failed', polyErr);
+                    }
+                  }
+                }
+              })
+              .catch(() => {
+                if (!cancelled) setCountriesMissing(true);
+              });
+          };
+          polygonTimer = window.setTimeout(kickPolygons, mobile ? 120 : 0);
+        });
+
         setGlobeReady(true);
         setGlobeError(false);
         setFailReason(null);
-
-        // Drawn political countries over a solid ocean plate.
-        void loadCountries()
-          .then((features) => {
-            if (cancelled || globeRef.current !== globe) return;
-            globe.polygonsData(features);
-            setCountriesMissing(false);
-          })
-          .catch(() => {
-            if (!cancelled) setCountriesMissing(true);
-            /* ocean alone — pins still work */
-          });
+        setFailDetail(null);
 
         resizeObs = new ResizeObserver(() => syncSize());
         resizeObs.observe(el);
         window.addEventListener('resize', onWinResize);
         window.addEventListener('orientationchange', onWinResize);
 
-        // stash listeners for cleanup
         (
           el as HTMLDivElement & {
             __sillageGlobeCleanup?: () => void;
@@ -530,45 +597,41 @@ export function MondePage({ journal }: Props) {
           ).removeEventListener?.('change', onControlsChange);
         };
       } catch (err) {
-        if (!cancelled) {
-          setGlobeError(true);
-          setGlobeReady(false);
-          if (err instanceof GlobeLoadError) {
-            setFailReason(err.reason);
-          } else if (!isWebGLAvailable()) {
-            setFailReason('webgl');
-          } else {
-            setFailReason(navigator.onLine ? 'unknown' : 'network');
-          }
-        }
+        destroyGlobe(created, el);
+        created = null;
+        globeRef.current = null;
+        fail(err);
       }
     })();
 
     return () => {
       cancelled = true;
+      cancelFlag.cancelled = true;
       resizeObs?.disconnect();
       window.removeEventListener('resize', onWinResize);
       window.removeEventListener('orientationchange', onWinResize);
       if (saveTimer) window.clearTimeout(saveTimer);
+      if (polygonTimer) window.clearTimeout(polygonTimer);
       const cleanup = (
         el as HTMLDivElement & { __sillageGlobeCleanup?: () => void }
       ).__sillageGlobeCleanup;
       cleanup?.();
-      if (globeRef.current) {
+      const g = globeRef.current ?? created;
+      if (g) {
         try {
-          saveView(globeRef.current);
-          globeRef.current._destructor();
+          saveView(g);
         } catch {
           /* ignore */
         }
-        globeRef.current = null;
+        destroyGlobe(g, el);
+      } else {
+        el.replaceChildren();
       }
-      // clear leftover canvas nodes
-      el.replaceChildren();
-      setGlobeReady(false);
+      globeRef.current = null;
+      // Avoid setState on StrictMode cleanup — boot key remount resets flags.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [globeBootKey]);
 
   // Theme: political atlas ocean / fills / rim shift with dark & light UI
   useEffect(() => {
@@ -711,6 +774,17 @@ export function MondePage({ journal }: Props) {
   }, [days, journal.today]);
 
   const emptyPins = pins.length === 0;
+
+  const retryGlobe = () => {
+    fittedRef.current = false;
+    setGlobeError(false);
+    setGlobeReady(false);
+    setFailReason(null);
+    setFailDetail(null);
+    setCountriesMissing(false);
+    setGlobeBootKey((n) => n + 1);
+  };
+
   const failCopy =
     failReason === 'webgl'
       ? {
@@ -766,28 +840,39 @@ export function MondePage({ journal }: Props) {
       </header>
 
       <div className="monde-map-wrap" aria-busy={labelBusy || undefined}>
+        <div
+          ref={globeElRef}
+          className="monde-map monde-globe"
+          role="application"
+          aria-label="Globe des souvenirs"
+          hidden={globeError || undefined}
+          aria-hidden={globeError || undefined}
+        />
+        {!globeError && !globeReady ? (
+          <div className="monde-globe-loading" aria-hidden="true">
+            <p>Le globe s’éveille…</p>
+          </div>
+        ) : null}
         {globeError ? (
           <div className="monde-map-fallback" role="status">
             <p>{failCopy.body}</p>
-            <Link to="/lieux" className="monde-lieux-link">
-              Voir la carte des lieux
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div
-              ref={globeElRef}
-              className="monde-map monde-globe"
-              role="application"
-              aria-label="Globe des souvenirs"
-            />
-            {!globeReady ? (
-              <div className="monde-globe-loading" aria-hidden="true">
-                <p>Le globe s’éveille…</p>
-              </div>
+            {failDetail && (import.meta.env.DEV || failReason === 'unknown') ? (
+              <p className="monde-fail-detail">{failDetail}</p>
             ) : null}
-          </>
-        )}
+            <div className="monde-fail-actions">
+              <button
+                type="button"
+                className="monde-retry-btn"
+                onClick={retryGlobe}
+              >
+                Réessayer
+              </button>
+              <Link to="/lieux" className="monde-lieux-link">
+                Voir la carte des lieux
+              </Link>
+            </div>
+          </div>
+        ) : null}
 
         {!globeError && globeReady && placePhase === 'idle' && !selectedPin ? (
           <p className="monde-hint" aria-hidden="true">
