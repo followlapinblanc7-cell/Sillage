@@ -78,6 +78,11 @@ export function FilPage({ journal }: Props) {
     if (traceDay) ensureTraceDay(traceDay.id);
   }, [traceDay, ensureTraceDay]);
 
+  const tracesList = useMemo(() => {
+    if (!traceDay) return older;
+    return older.filter((d) => d.id !== traceDay.id);
+  }, [older, traceDay]);
+
   if (contentDays.length === 0) {
     return (
       <div>
@@ -144,36 +149,6 @@ export function FilPage({ journal }: Props) {
 
       <WeekStrip today={today} daysById={state.days} />
 
-      {traceDay ? (
-        <div className="trace-card" role="complementary" aria-label="Une trace">
-          <Link to={`/jour/${traceDay.id}`} className="trace-card-main">
-            {traceThumb ? (
-              <img
-                className="trace-card-thumb"
-                src={traceThumb}
-                alt=""
-                loading="lazy"
-              />
-            ) : null}
-            <div className="trace-card-body">
-              <p className="trace-card-eyebrow">Une trace</p>
-              <p className="trace-card-date">{formatDateShort(traceDay.id)}</p>
-              <h3 className="trace-card-title">{traceTitle}</h3>
-              {traceExcerpt ? (
-                <p className="trace-card-excerpt">{traceExcerpt}</p>
-              ) : null}
-            </div>
-          </Link>
-          <button
-            type="button"
-            className="trace-card-dismiss"
-            onClick={() => dismissTrace(today)}
-          >
-            Plus tard
-          </button>
-        </div>
-      ) : null}
-
       {hasToday && todayEntry ? (
         <>
           <div className="section-label">Aujourd&apos;hui</div>
@@ -188,12 +163,53 @@ export function FilPage({ journal }: Props) {
       )}
 
       {older.length > 0 ? (
-        <>
-          <div className="section-label">Avant aujourd&apos;hui</div>
-          {older.map((d) => (
-            <DayCard key={d.id} day={d} />
+        <section className="traces-section" aria-label="Traces">
+          <div className="section-label">Traces</div>
+          <p className="traces-sub">Des jours que tu as déjà gardés.</p>
+
+          {traceDay ? (
+            <div
+              className="trace-hero"
+              role="complementary"
+              aria-label="Une trace"
+            >
+              <Link to={`/jour/${traceDay.id}`} className="trace-hero-main">
+                {traceThumb ? (
+                  <img
+                    className="trace-hero-cover"
+                    src={traceThumb}
+                    alt=""
+                    loading="lazy"
+                  />
+                ) : null}
+                <div className="trace-hero-body">
+                  <p className="trace-hero-eyebrow">Une trace</p>
+                  <p className="trace-hero-date">
+                    {formatDateShort(traceDay.id)}
+                  </p>
+                  <h3 className="trace-hero-title">{traceTitle}</h3>
+                  {traceExcerpt ? (
+                    <p className="trace-hero-excerpt">{traceExcerpt}</p>
+                  ) : null}
+                  <p className="trace-hero-line">
+                    Pour ne pas oublier que c&apos;était réel.
+                  </p>
+                </div>
+              </Link>
+              <button
+                type="button"
+                className="trace-hero-dismiss"
+                onClick={() => dismissTrace(today)}
+              >
+                Plus tard
+              </button>
+            </div>
+          ) : null}
+
+          {tracesList.map((d) => (
+            <DayCard key={d.id} day={d} showDate showCover />
           ))}
-        </>
+        </section>
       ) : null}
     </div>
   );

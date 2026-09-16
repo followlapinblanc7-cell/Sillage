@@ -13,9 +13,16 @@ interface Props {
   day: DayEntry;
   featured?: boolean;
   showDate?: boolean;
+  /** Show cover thumb even when not featured (default false). */
+  showCover?: boolean;
 }
 
-export function DayCard({ day, featured, showDate = false }: Props) {
+export function DayCard({
+  day,
+  featured,
+  showDate = false,
+  showCover = false,
+}: Props) {
   const cover = coverPhoto(day);
   const mood = moodLabel(day.mood);
   const n = day.photos.length;
@@ -25,13 +32,14 @@ export function DayCard({ day, featured, showDate = false }: Props) {
     day.location.trim() || null,
     n ? `${n} photo${n > 1 ? 's' : ''}` : null,
   ].filter(Boolean);
+  const showThumb = !!cover && (featured || showCover);
 
   return (
     <Link
       to={`/jour/${day.id}`}
       className={`day-card${featured ? ' featured' : ''}`}
     >
-      {cover && featured ? (
+      {showThumb ? (
         <img className="day-card-thumb" src={cover} alt="" loading="lazy" />
       ) : null}
       <h3 className="day-card-title">
