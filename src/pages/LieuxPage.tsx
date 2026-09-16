@@ -410,13 +410,13 @@ export function LieuxPage({ journal }: Props) {
     } else if (geocoding && pendingCount > 0) {
       statusMessage =
         lieux.length === 1
-          ? 'Placement…'
-          : `Placement… ${geocodeDone}⁄${lieux.length}`;
+          ? 'Le lieu se place…'
+          : `Les lieux se placent… ${geocodeDone}⁄${lieux.length}`;
     } else if (!geocoding && pinCount === 0 && resolvedCount >= lieux.length) {
       if (softFailCount > 0) {
         statusMessage = 'Réseau silencieux — on réessaiera. La liste reste.';
       } else if (missCount > 0) {
-        statusMessage = 'Sans pin pour l’instant — la liste reste là.';
+        statusMessage = 'Hors carte pour l’instant — la liste reste là.';
       }
     }
   }
@@ -491,9 +491,9 @@ export function LieuxPage({ journal }: Props) {
                   <span className="lieux-row-label">{lieu.label}</span>
                   <span className="lieux-row-meta">
                     {dayCountLabel(lieu.days.length)}
-                    {knownMiss ? ' · sans pin' : ''}
+                    {knownMiss ? ' · hors carte' : ''}
                     {softFail ? ' · à revoir' : ''}
-                    {placing ? ' · placement…' : ''}
+                    {placing ? ' · se place…' : ''}
                   </span>
                 </span>
                 <span className="chev" aria-hidden="true">
