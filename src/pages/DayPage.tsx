@@ -6,7 +6,7 @@ import {
   hasContent,
   type JournalApi,
 } from '../hooks/useJournal';
-import { reverseGeocode } from '../lib/geocode';
+import { rememberPlace, reverseGeocode } from '../lib/geocode';
 import { LieuField } from '../components/LieuField';
 import { CoffreUnlock } from '../components/CoffreUnlock';
 import { PhotoCaptureSheet } from '../components/PhotoCaptureSheet';
@@ -245,6 +245,11 @@ export function DayPage({ journal }: Props) {
             );
             if (session.cancelled) return;
             if (outcome.status === 'ok') {
+              // Seed recent + cache with device coords so Lieu search can soft-bias nearby
+              rememberPlace(outcome.label, {
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+              });
               journal.updateDay(id, { location: outcome.label });
               setGeoError(null);
             } else if (outcome.status === 'miss') {

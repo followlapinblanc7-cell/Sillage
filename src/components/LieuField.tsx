@@ -84,7 +84,7 @@ export function LieuField({ value, onChange }: Props) {
     void (async () => {
       const outcome = await searchPlaces(query, {
         signal: abort.signal,
-        limit: 5,
+        limit: 7,
       });
       if (abort.signal.aborted) return;
       setSearching(false);
@@ -246,7 +246,7 @@ export function LieuField({ value, onChange }: Props) {
     searching && !items.length
       ? 'Recherche…'
       : status === 'empty'
-        ? 'Aucun lieu trouvé'
+        ? 'Rien par ici — un resto, une rue, une ville… ?'
         : status === 'unavailable'
           ? 'Pas de réseau'
           : null;
@@ -262,7 +262,7 @@ export function LieuField({ value, onChange }: Props) {
         ref={inputRef}
         className="lieu-input"
         type="text"
-        placeholder="Où étais-tu ?"
+        placeholder="Ville, café, resto, un coin…"
         value={value}
         onChange={(e) => onInputChange(e.target.value)}
         onFocus={onFocus}

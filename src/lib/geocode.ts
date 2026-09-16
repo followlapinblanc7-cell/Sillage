@@ -112,12 +112,23 @@ function roadOf(address: NominatimAddress): string | undefined {
   );
 }
 
+/** OSM tag values like fast_food / cafe — not venue display names. */
+function looksLikeOsmTagValue(raw: string): boolean {
+  const s = raw.trim();
+  if (!s) return true;
+  if (/\s/.test(s)) return false;
+  if (/[A-ZÀ-Ÿ]/.test(s)) return false; // proper names usually have capitals in FR
+  return /^[a-z0-9_]+$/.test(s);
+}
+
 function namedSpotOf(
   address: NominatimAddress,
   name?: string,
 ): string | undefined {
+  const trimmedName = name?.trim();
+  if (trimmedName) return trimmedName;
+
   const candidates = [
-    name?.trim(),
     address.amenity,
     address.tourism,
     address.leisure,
@@ -129,7 +140,10 @@ function namedSpotOf(
     address.craft,
   ];
   for (const c of candidates) {
-    if (c && c.trim()) return c.trim();
+    if (!c) continue;
+    const t = c.trim();
+    if (!t || looksLikeOsmTagValue(t)) continue;
+    return t;
   }
   return undefined;
 }
@@ -408,19 +422,159 @@ async function fetchNominatimSearch(query: string): Promise<GeocodeHit | null> {
   };
 }
 
+const POI_ADDRESS_KEYS = [
+  'amenity',
+  'shop',
+  'tourism',
+  'leisure',
+  'craft',
+  'office',
+  'historic',
+  'attraction',
+] as const;
+
+const POI_CLASSES = new Set([
+  'amenity',
+  'shop',
+  'tourism',
+  'leisure',
+  'craft',
+  'office',
+  'historic',
+]);
+
+interface NominatimSearchRow {
+  lat?: string;
+  lon?: string;
+  display_name?: string;
+  name?: string;
+  class?: string;
+  type?: string;
+  address?: NominatimAddress;
+}
+
+type RankedPlace = PlaceCandidate & { score: number; order: number };
+
+/** Soft viewbox (~±0.2°) around a point — prefers nearby hits without excluding elsewhere. */
+function viewboxAround(lat: number, lon: number, delta = 0.2): string {
+  const left = lon - delta;
+  const right = lon + delta;
+  const top = lat + delta;
+  const bottom = lat - delta;
+  return `${left},${top},${right},${bottom}`;
+}
+
+function addressHasPoiKey(address: NominatimAddress | undefined): boolean {
+  if (!address) return false;
+  for (const key of POI_ADDRESS_KEYS) {
+    const v = address[key];
+    if (typeof v === 'string' && v.trim()) return true;
+  }
+  return false;
+}
+
+/**
+ * Prefer établissements (resto, shop, café…) over cities/admin while still
+ * keeping streets and localities when that is what the user typed.
+ */
+function poiScore(row: NominatimSearchRow): number {
+  const cls = (row.class ?? '').toLowerCase();
+  if (POI_CLASSES.has(cls)) return 3;
+  if (addressHasPoiKey(row.address)) return 3;
+
+  const name = row.name?.trim();
+  if (name) {
+    const locality =
+      row.address?.city ||
+      row.address?.town ||
+      row.address?.village ||
+      row.address?.municipality;
+    const road = row.address ? roadOf(row.address) : undefined;
+    // Named venue that isn't merely the locality or road label
+    if (
+      (!locality || !sameLabel(name, locality)) &&
+      (!road || !sameLabel(name, road))
+    ) {
+      return 2;
+    }
+  }
+  return 0;
+}
+
+function rankPlaceCandidates(
+  rows: NominatimSearchRow[],
+  limit: number,
+): PlaceCandidate[] {
+  const seen = new Set<string>();
+  const ranked: RankedPlace[] = [];
+
+  rows.forEach((row, order) => {
+    const lat = Number(row.lat);
+    const lon = Number(row.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    const label = formatPrecisePlace(
+      row.address ?? {},
+      row.display_name,
+      row.name,
+    );
+    if (!label) return;
+    const key = locationKey(label);
+    if (seen.has(key)) return;
+    seen.add(key);
+    ranked.push({
+      label,
+      lat,
+      lon,
+      score: poiScore(row),
+      order,
+    });
+  });
+
+  ranked.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.order - b.order;
+  });
+
+  return ranked.slice(0, limit).map(({ label, lat, lon }) => ({
+    label,
+    lat,
+    lon,
+  }));
+}
+
+function biasNearFromRecents(): { lat: number; lon: number } | undefined {
+  const recent = listRecentPlaces()[0];
+  if (!recent) return undefined;
+  return { lat: recent.lat, lon: recent.lon };
+}
+
 async function fetchNominatimSearchMany(
   query: string,
   limit: number,
   signal?: AbortSignal,
+  near?: { lat: number; lon: number },
 ): Promise<PlaceCandidate[]> {
   await waitForSlot(signal);
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
+  // Pull a few extra so client-side POI ranking has room to surface venues
+  const fetchLimit = Math.min(Math.max(limit * 2, limit), 12);
+
   const url = new URL(NOMINATIM_SEARCH);
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'json');
-  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('limit', String(fetchLimit));
   url.searchParams.set('addressdetails', '1');
+
+  if (
+    near &&
+    Number.isFinite(near.lat) &&
+    Number.isFinite(near.lon)
+  ) {
+    url.searchParams.set('viewbox', viewboxAround(near.lat, near.lon));
+    // Soft bias: prefer the box, do not hard-clip results
+    url.searchParams.set('bounded', '0');
+  }
 
   const res = await fetch(url.toString(), {
     headers: nominatimHeaders(),
@@ -431,36 +585,11 @@ async function fetchNominatimSearchMany(
     throw new Error(`search places http ${res.status}`);
   }
 
-  const data = (await res.json()) as Array<{
-    lat?: string;
-    lon?: string;
-    display_name?: string;
-    name?: string;
-    address?: NominatimAddress;
-  }>;
+  const data = (await res.json()) as NominatimSearchRow[];
 
   if (!Array.isArray(data) || !data.length) return [];
 
-  const seen = new Set<string>();
-  const places: PlaceCandidate[] = [];
-
-  for (const row of data) {
-    const lat = Number(row.lat);
-    const lon = Number(row.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-    const label = formatPrecisePlace(
-      row.address ?? {},
-      row.display_name,
-      row.name,
-    );
-    if (!label) continue;
-    const key = locationKey(label);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    places.push({ label, lat, lon });
-  }
-
-  return places;
+  return rankPlaceCandidates(data, limit);
 }
 
 async function fetchNominatimReverse(
@@ -551,23 +680,30 @@ export function geocodeLocation(raw: string): Promise<GeocodeOutcome> {
 }
 
 /**
- * Forward search for several precise place candidates (streets, POIs, addresses).
- * Respects ≤1 req/s queue, AbortController, and Nominatim policy.
+ * Forward search for several precise place candidates (établissements, streets, cities).
+ * Prefers POI-like Nominatim hits; soft-biases with viewbox when a recent place
+ * (or options.near) is known. Respects ≤1 req/s, AbortController, Nominatim policy.
  * Never throws (abort / network → unavailable).
  */
 export function searchPlaces(
   raw: string,
-  options?: { signal?: AbortSignal; limit?: number },
+  options?: {
+    signal?: AbortSignal;
+    limit?: number;
+    /** Optional bias center; defaults to the most recent lieu when available. */
+    near?: { lat: number; lon: number };
+  },
 ): Promise<SearchPlacesOutcome> {
   const query = normalizeQuery(raw);
   if (query.length < 2) return Promise.resolve({ status: 'empty' });
-  const limit = Math.min(Math.max(options?.limit ?? 5, 1), 8);
+  const limit = Math.min(Math.max(options?.limit ?? 7, 1), 8);
   const signal = options?.signal;
+  const near = options?.near ?? biasNearFromRecents();
 
   const job = chain.then(async (): Promise<SearchPlacesOutcome> => {
     if (signal?.aborted) return { status: 'unavailable' };
     try {
-      const places = await fetchNominatimSearchMany(query, limit, signal);
+      const places = await fetchNominatimSearchMany(query, limit, signal, near);
       if (!places.length) return { status: 'empty' };
       return { status: 'ok', places };
     } catch (e) {
