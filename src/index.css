@@ -1720,6 +1720,7 @@ img {
   left: 12px;
   right: 12px;
   bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  min-height: 2.4em;
   padding: 8px 14px;
   border-radius: 999px;
   background: rgba(26, 18, 16, 0.78);
@@ -1730,6 +1731,12 @@ img {
   z-index: 450;
   font-family: var(--serif);
   font-style: italic;
+  transition: opacity 0.2s ease;
+}
+
+.lieux-map-status.is-empty {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .lieux-pin {

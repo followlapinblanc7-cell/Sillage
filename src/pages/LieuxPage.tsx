@@ -437,7 +437,10 @@ export function LieuxPage({ journal }: Props) {
         {liveAnnouncement}
       </p>
 
-      <div className="lieux-map-wrap">
+      <div
+        className="lieux-map-wrap"
+        aria-busy={geocoding && pendingCount > 0 ? true : undefined}
+      >
         {mapError ? (
           <p className="lieux-map-fallback" role="status">
             La carte dort hors ligne. La liste, elle, reste.
@@ -450,9 +453,13 @@ export function LieuxPage({ journal }: Props) {
             aria-label="Carte des lieux gardés"
           />
         )}
-        {statusMessage ? (
-          <p className="lieux-map-status" role="status">
-            {statusMessage}
+        {!mapError ? (
+          <p
+            className={`lieux-map-status${statusMessage ? '' : ' is-empty'}`}
+            role="status"
+            aria-hidden={statusMessage ? undefined : true}
+          >
+            {statusMessage ?? ' '}
           </p>
         ) : null}
       </div>
