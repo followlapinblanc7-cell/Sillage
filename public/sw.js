@@ -1,5 +1,5 @@
 /* Sillage — app-shell service worker (cache-first for same-origin assets) */
-const CACHE = 'sillage-shell-v22';
+const CACHE = 'sillage-shell-v23';
 const PRECACHE = [
   '/Sillage/',
   '/Sillage/index.html',
@@ -30,6 +30,7 @@ const PRECACHE = [
   '/Sillage/fonts/source-sans-3-latin-ext-400-normal.woff2',
   '/Sillage/fonts/source-sans-3-latin-ext-500-normal.woff2',
   '/Sillage/fonts/source-sans-3-latin-ext-600-normal.woff2',
+  '/Sillage/geo/countries.geojson',
 ];
 
 self.addEventListener('install', (event) => {

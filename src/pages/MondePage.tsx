@@ -17,8 +17,10 @@ import {
   loadCountries,
 } from '../lib/countries';
 import {
+  GlobeLoadError,
   isWebGLAvailable,
   loadGlobe,
+  type GlobeFailReason,
   type GlobeInstance,
 } from '../lib/loadGlobe';
 import {
@@ -232,7 +234,8 @@ export function MondePage({ journal }: Props) {
   const [retryTick, setRetryTick] = useState(0);
   const [globeReady, setGlobeReady] = useState(false);
   const [globeError, setGlobeError] = useState(false);
-  const [webglMissing, setWebglMissing] = useState(false);
+  const [failReason, setFailReason] = useState<GlobeFailReason | null>(null);
+  const [countriesMissing, setCountriesMissing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [placePhase, setPlacePhase] = useState<PlacePhase>('idle');
   const [pending, setPending] = useState<{
@@ -376,7 +379,7 @@ export function MondePage({ journal }: Props) {
       try {
         if (!isWebGLAvailable()) {
           if (!cancelled) {
-            setWebglMissing(true);
+            setFailReason('webgl');
             setGlobeError(true);
             setGlobeReady(false);
           }
@@ -493,15 +496,17 @@ export function MondePage({ journal }: Props) {
         globe.onGlobeReady(() => clearNightEmissive(globe));
         setGlobeReady(true);
         setGlobeError(false);
-        setWebglMissing(false);
+        setFailReason(null);
 
         // Drawn political countries over a solid ocean plate.
         void loadCountries()
           .then((features) => {
             if (cancelled || globeRef.current !== globe) return;
             globe.polygonsData(features);
+            setCountriesMissing(false);
           })
           .catch(() => {
+            if (!cancelled) setCountriesMissing(true);
             /* ocean alone — pins still work */
           });
 
@@ -524,11 +529,17 @@ export function MondePage({ journal }: Props) {
             }
           ).removeEventListener?.('change', onControlsChange);
         };
-      } catch {
+      } catch (err) {
         if (!cancelled) {
           setGlobeError(true);
           setGlobeReady(false);
-          if (!isWebGLAvailable()) setWebglMissing(true);
+          if (err instanceof GlobeLoadError) {
+            setFailReason(err.reason);
+          } else if (!isWebGLAvailable()) {
+            setFailReason('webgl');
+          } else {
+            setFailReason(navigator.onLine ? 'unknown' : 'network');
+          }
         }
       }
     })();
@@ -700,13 +711,30 @@ export function MondePage({ journal }: Props) {
   }, [days, journal.today]);
 
   const emptyPins = pins.length === 0;
+  const failCopy =
+    failReason === 'webgl'
+      ? {
+          status: 'Cet appareil ne peut pas dessiner le globe.',
+          body: 'Le globe a besoin de WebGL — indisponible ici.',
+        }
+      : failReason === 'network'
+        ? {
+            status: 'Le globe n’a pas pu se charger hors ligne.',
+            body: 'Ouvre Monde une fois en ligne pour l’embarquer, puis il restera là.',
+          }
+        : {
+            status: 'Le globe n’a pas pu s’éveiller.',
+            body: 'Le rendu 3D a échoué. Réessaie, ou ouvre la carte des lieux.',
+          };
   const statusLine = globeError
-    ? webglMissing
-      ? 'Cet appareil ne peut pas dessiner le globe.'
-      : 'Le globe dort hors ligne — le reste du journal reste là.'
-    : placePhase === 'picking'
-      ? 'Touche le globe pour poser un souvenir.'
-      : placeMsg;
+    ? failCopy.status
+    : !globeReady
+      ? 'Le globe s’éveille…'
+      : countriesMissing
+        ? 'Les pays n’ont pas pu se charger — l’océan reste, les épingles aussi.'
+        : placePhase === 'picking'
+          ? 'Touche le globe pour poser un souvenir.'
+          : placeMsg;
 
   return (
     <div
@@ -740,22 +768,25 @@ export function MondePage({ journal }: Props) {
       <div className="monde-map-wrap" aria-busy={labelBusy || undefined}>
         {globeError ? (
           <div className="monde-map-fallback" role="status">
-            <p>
-              {webglMissing
-                ? 'Le globe a besoin de WebGL — indisponible ici.'
-                : 'Le globe a besoin du réseau. Tes jours, eux, restent.'}
-            </p>
+            <p>{failCopy.body}</p>
             <Link to="/lieux" className="monde-lieux-link">
               Voir la carte des lieux
             </Link>
           </div>
         ) : (
-          <div
-            ref={globeElRef}
-            className="monde-map monde-globe"
-            role="application"
-            aria-label="Globe des souvenirs"
-          />
+          <>
+            <div
+              ref={globeElRef}
+              className="monde-map monde-globe"
+              role="application"
+              aria-label="Globe des souvenirs"
+            />
+            {!globeReady ? (
+              <div className="monde-globe-loading" aria-hidden="true">
+                <p>Le globe s’éveille…</p>
+              </div>
+            ) : null}
+          </>
         )}
 
         {!globeError && globeReady && placePhase === 'idle' && !selectedPin ? (
