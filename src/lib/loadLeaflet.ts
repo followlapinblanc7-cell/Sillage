@@ -19,24 +19,42 @@ export interface LeafletLatLng {
 
 export interface LeafletMap {
   setView: (center: [number, number], zoom: number) => LeafletMap;
+  flyTo: (
+    center: [number, number],
+    zoom?: number,
+    options?: { duration?: number; easeLinearity?: number },
+  ) => LeafletMap;
   fitBounds: (
     bounds: LeafletLatLngBounds,
     options?: { padding?: [number, number]; maxZoom?: number },
   ) => LeafletMap;
+  getZoom: () => number;
   remove: () => void;
   invalidateSize: () => void;
   removeLayer: (layer: unknown) => void;
+  closePopup: () => LeafletMap;
+  on: (event: string, fn: () => void) => LeafletMap;
+  off: (event: string, fn: () => void) => LeafletMap;
 }
 
 export interface LeafletMarker {
   addTo: (map: LeafletMap) => LeafletMarker;
-  bindPopup: (html: string) => LeafletMarker;
+  bindPopup: (html: string, options?: Record<string, unknown>) => LeafletMarker;
+  openPopup: () => LeafletMarker;
+  closePopup: () => LeafletMarker;
   on: (event: string, fn: () => void) => LeafletMarker;
   setLatLng: (latlng: [number, number]) => LeafletMarker;
+  setIcon: (icon: unknown) => LeafletMarker;
+  getElement: () => HTMLElement | undefined;
 }
 
 export interface LeafletTileLayer {
   addTo: (map: LeafletMap) => LeafletTileLayer;
+  on: (event: string, fn: () => void) => LeafletTileLayer;
+}
+
+export interface LeafletControl {
+  addTo: (map: LeafletMap) => LeafletControl;
 }
 
 export interface LeafletNamespace {
@@ -48,7 +66,15 @@ export interface LeafletNamespace {
   ) => LeafletMarker;
   divIcon: (options: Record<string, unknown>) => unknown;
   latLngBounds: (latlngs?: [number, number][]) => LeafletLatLngBounds;
-  Icon: { Default: { prototype: Record<string, unknown>; mergeOptions: (o: Record<string, unknown>) => void } };
+  control: {
+    zoom: (options?: { position?: string }) => LeafletControl;
+  };
+  Icon: {
+    Default: {
+      prototype: Record<string, unknown>;
+      mergeOptions: (o: Record<string, unknown>) => void;
+    };
+  };
 }
 
 declare global {

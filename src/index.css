@@ -1652,7 +1652,7 @@ img {
 
 /* Lieux — quiet carte des lieux (Tiroir) */
 .lieux-page {
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
 .lieux-back {
@@ -1660,39 +1660,83 @@ img {
   margin-bottom: 14px;
 }
 
+.lieux-a11y-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .lieux-map-wrap {
   position: relative;
-  margin: 0 0 18px;
-  border-radius: var(--radius);
+  margin: 0 0 20px;
+  border-radius: calc(var(--radius) + 4px);
   overflow: hidden;
   border: 1px solid var(--border);
-  background: var(--bg-card);
+  background: #16110f;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
 .lieux-map {
   width: 100%;
-  height: 220px;
-  background: #1a1412;
+  height: clamp(240px, 42vh, 360px);
+  height: clamp(240px, 42svh, 360px);
+  height: clamp(240px, 42dvh, 360px);
+  min-height: 220px;
+  background: #16110f;
   z-index: 0;
+  /* Page scroll wins when the finger starts on the map (touch) */
+  touch-action: pan-y;
 }
 
 .lieux-map-fallback,
 .lieux-map-status {
   margin: 0;
-  padding: 14px 16px;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.4;
   color: var(--text-muted);
   text-align: center;
 }
 
+.lieux-map-fallback {
+  padding: 28px 18px;
+  min-height: clamp(220px, 42vh, 360px);
+  min-height: clamp(220px, 42svh, 360px);
+  min-height: clamp(220px, 42dvh, 360px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif);
+  font-style: italic;
+}
+
 .lieux-map-status {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(transparent, rgba(26, 18, 16, 0.88));
+  left: 12px;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  min-height: 2.4em;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(26, 18, 16, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
   pointer-events: none;
-  z-index: 400;
+  z-index: 450;
+  font-family: var(--serif);
+  font-style: italic;
+  transition: opacity 0.2s ease;
+}
+
+.lieux-map-status.is-empty {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .lieux-pin {
@@ -1704,22 +1748,31 @@ img {
   display: block;
   width: 12px;
   height: 12px;
-  margin: 3px;
+  margin: 5px;
   border-radius: 50%;
   background: var(--accent-bright);
   box-shadow:
-    0 0 0 2px rgba(245, 237, 228, 0.85),
-    0 2px 8px rgba(0, 0, 0, 0.45);
+    0 0 0 2px rgba(245, 237, 228, 0.88),
+    0 2px 10px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    width 0.2s ease,
+    height 0.2s ease,
+    margin 0.2s ease;
 }
 
 .lieux-pin.active .lieux-pin-dot {
-  width: 14px;
-  height: 14px;
-  margin: 2px;
+  width: 15px;
+  height: 15px;
+  margin: 3.5px;
   background: var(--cream);
   box-shadow:
     0 0 0 3px var(--accent),
-    0 2px 10px rgba(0, 0, 0, 0.5);
+    0 0 0 6px rgba(139, 58, 58, 0.3),
+    0 3px 14px rgba(0, 0, 0, 0.55);
+  transform: scale(1.04);
 }
 
 .lieux-list {
@@ -1745,13 +1798,23 @@ img {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 52px;
   padding: 14px 16px;
   text-align: left;
   color: var(--text);
+  border-left: 2px solid transparent;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.lieux-row:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
+  background: rgba(245, 237, 228, 0.04);
 }
 
 .lieux-row.selected {
-  background: rgba(245, 237, 228, 0.04);
+  background: var(--accent-soft);
+  border-left-color: var(--accent-bright);
 }
 
 .lieux-row-pin {
@@ -1761,11 +1824,23 @@ img {
   flex-shrink: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1.5px var(--text-faint);
+  transition: background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
 
 .lieux-row-pin.on {
   background: var(--accent-bright);
-  box-shadow: none;
+  box-shadow: 0 0 0 2px rgba(245, 237, 228, 0.55);
+}
+
+.lieux-row.selected .lieux-row-pin.on,
+.lieux-row-pin.on.selected {
+  background: var(--cream);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.lieux-row-pin.placing {
+  opacity: 0.55;
+  box-shadow: inset 0 0 0 1.5px var(--text-muted);
 }
 
 .lieux-row-text {
@@ -1777,7 +1852,11 @@ img {
 }
 
 .lieux-row-label {
-  font-size: 0.98rem;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.08rem;
+  line-height: 1.25;
   color: var(--cream);
 }
 
@@ -1791,9 +1870,13 @@ img {
   flex-shrink: 0;
 }
 
+.lieux-row.selected .chev {
+  color: var(--accent-bright);
+}
+
 .lieux-days {
   margin-top: 4px;
-  padding: 14px 16px 16px;
+  padding: 16px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1804,7 +1887,7 @@ img {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .lieux-days-title {
@@ -1812,7 +1895,7 @@ img {
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  font-size: 1.2rem;
+  font-size: 1.22rem;
   color: var(--cream);
 }
 
@@ -1833,62 +1916,151 @@ img {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-.lieux-day-list > li + li {
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .lieux-day-link {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 0;
+  gap: 0;
+  padding: 16px;
+  min-height: 44px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.lieux-day-link:active {
+  transform: scale(0.99);
+}
+
+.lieux-day-link:focus-visible {
+  outline: 2px solid rgba(168, 72, 72, 0.65);
+  outline-offset: 2px;
 }
 
 .lieux-day-date {
   font-size: 0.78rem;
   color: var(--text-faint);
   letter-spacing: 0.01em;
+  margin: 0 0 8px;
 }
 
 .lieux-day-title {
-  font-size: 0.95rem;
-  color: var(--text);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.18rem;
+  line-height: 1.25;
+  color: var(--cream);
 }
 
-/* Leaflet attribution — soft on dark theme */
+/* Leaflet chrome — soft on dark Sillage theme */
 .lieux-map .leaflet-control-attribution {
-  background: rgba(26, 18, 16, 0.72) !important;
+  background: rgba(22, 17, 15, 0.72) !important;
   color: var(--text-faint) !important;
   font-size: 9px !important;
-  max-width: 70%;
+  max-width: 68%;
+  margin: 0 !important;
+  border-radius: 0;
+  padding: 3px 8px !important;
 }
 
 .lieux-map .leaflet-control-attribution a {
   color: var(--text-muted) !important;
 }
 
-.lieux-map .leaflet-popup-content-wrapper {
+.lieux-map .leaflet-control-zoom {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  margin: 12px 12px 0 0 !important;
+}
+
+.lieux-map .leaflet-control-zoom a {
+  width: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+  background: rgba(34, 24, 20, 0.92) !important;
+  color: var(--cream) !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-size: 16px !important;
+  text-indent: 0 !important;
+}
+
+.lieux-map .leaflet-control-zoom a:last-child {
+  border-bottom: none !important;
+}
+
+.lieux-map .leaflet-control-zoom a:hover,
+.lieux-map .leaflet-control-zoom a:focus {
+  background: rgba(42, 30, 26, 0.98) !important;
+  color: var(--cream) !important;
+}
+
+.lieux-map .leaflet-popup-content-wrapper,
+.lieux-map .lieux-popup-wrap .leaflet-popup-content-wrapper {
   background: var(--bg-elevated);
   color: var(--cream);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   font-family: var(--sans);
 }
 
-.lieux-map .leaflet-popup-tip {
+.lieux-map .leaflet-popup-tip,
+.lieux-map .lieux-popup-wrap .leaflet-popup-tip {
   background: var(--bg-elevated);
+  border: none;
+  box-shadow: none;
 }
 
 .lieux-map .leaflet-popup-content {
-  margin: 10px 12px;
+  margin: 10px 12px !important;
   font-size: 0.88rem;
   line-height: 1.35;
 }
 
-.lieux-map .leaflet-popup-content strong {
+.lieux-popup {
+  margin: 0;
+}
+
+.lieux-popup-label {
+  margin: 0;
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
+  font-size: 1.02rem;
+  color: var(--cream);
+}
+
+.lieux-popup-meta {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-style: normal;
+}
+
+.lieux-map .leaflet-popup-close-button {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .lieux-map {
+    height: clamp(260px, 38vh, 380px);
+    height: clamp(260px, 38svh, 380px);
+    height: clamp(260px, 38dvh, 380px);
+  }
+
+  .lieux-map-fallback {
+    min-height: clamp(260px, 38vh, 380px);
+    min-height: clamp(260px, 38svh, 380px);
+    min-height: clamp(260px, 38dvh, 380px);
+  }
 }
