@@ -300,8 +300,8 @@ export function DayPage({ journal }: Props) {
   }
 
   return (
-    <div>
-      <div className="day-header">
+    <div className="day-page">
+      <header className="day-header">
         <Link to={backTo} className="back-btn" aria-label="Retour">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" />
@@ -309,7 +309,7 @@ export function DayPage({ journal }: Props) {
         </Link>
         <span className="badge">{badgeLabel}</span>
         <span
-          className={`save-status${savePhase === 'idle' ? ' is-idle' : ''}`}
+          className={`save-status${savePhase === 'idle' ? ' is-idle' : ''}${savePhase === 'saved' ? ' is-saved' : ''}`}
           aria-live="polite"
         >
           {savePhase === 'saving'
@@ -318,205 +318,227 @@ export function DayPage({ journal }: Props) {
               ? 'Enregistré'
               : ''}
         </span>
-      </div>
+      </header>
 
-      <p className="day-date">{formatDateLong(id)}</p>
+      <section className="day-write" aria-label="Écrire le souvenir">
+        <p className="day-date">{formatDateLong(id)}</p>
 
-      <input
-        className="title-input"
-        type="text"
-        placeholder="Un titre, même court…"
-        value={day.title}
-        onChange={(e) => journal.updateDay(id, { title: e.target.value })}
-        aria-label="Titre"
-      />
+        <input
+          className="title-input"
+          type="text"
+          placeholder="Un titre, même court…"
+          value={day.title}
+          onChange={(e) => journal.updateDay(id, { title: e.target.value })}
+          aria-label="Titre"
+        />
 
-      <div className="story-label">Le souvenir</div>
-      <textarea
-        className="story-input"
-        placeholder="Qu’est-ce qui restera de cette journée ?"
-        value={day.story}
-        onChange={(e) => journal.updateDay(id, { story: e.target.value })}
-        onBlur={onStoryBlur}
-        aria-label="Souvenir"
-      />
+        <div className="story-label">Le souvenir</div>
+        <textarea
+          className="story-input"
+          placeholder="Qu’est-ce qui restera de cette journée ?"
+          value={day.story}
+          onChange={(e) => journal.updateDay(id, { story: e.target.value })}
+          onBlur={onStoryBlur}
+          aria-label="Souvenir"
+        />
+      </section>
 
-      <button
-        type="button"
-        className="meta-toggle"
-        onClick={() => setMetaOpen((o) => !o)}
-        aria-expanded={metaOpen}
-      >
-        <span>{metaSummary}</span>
-        <span aria-hidden="true">{metaOpen ? '▴' : '▾'}</span>
-      </button>
+      <section className="day-meta" aria-label="Détails du jour">
+        <button
+          type="button"
+          className="meta-toggle"
+          onClick={() => setMetaOpen((o) => !o)}
+          aria-expanded={metaOpen}
+        >
+          <span className="meta-toggle-text">{metaSummary}</span>
+          <span className="meta-toggle-chev" aria-hidden="true">
+            {metaOpen ? '▴' : '▾'}
+          </span>
+        </button>
 
-      {metaOpen ? (
-        <div className="meta-panel">
-          <div className="field-label">Lieu</div>
-          <div className="lieu-row">
-            <LieuField
-              value={day.location}
-              onChange={(location) => {
-                setGeoError(null);
-                journal.updateDay(id, { location });
-              }}
-            />
-            {geoSupported ? (
-              geoBusy ? (
+        {metaOpen ? (
+          <div className="meta-panel">
+            <div className="meta-block">
+              <div className="field-label">Lieu</div>
+              <div className="lieu-row">
+                <LieuField
+                  value={day.location}
+                  onChange={(location) => {
+                    setGeoError(null);
+                    journal.updateDay(id, { location });
+                  }}
+                />
+                {geoSupported ? (
+                  geoBusy ? (
+                    <button
+                      type="button"
+                      className="btn-ghost lieu-gps-btn"
+                      onClick={cancelGeo}
+                    >
+                      Annuler
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-ghost lieu-gps-btn"
+                      onClick={locateMe}
+                      title="Remplir le lieu depuis la position de l’appareil"
+                    >
+                      Ma position
+                    </button>
+                  )
+                ) : null}
+              </div>
+              {geoBusy ? (
+                <p className="muted lieu-gps-status" aria-live="polite">
+                  Localisation…
+                </p>
+              ) : null}
+              {geoError && !geoBusy ? (
+                <p className="muted lieu-gps-status" role="alert">
+                  {geoError}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="meta-block">
+              <div className="field-label">Humeur</div>
+              <div className="mood-chips">
+                {MOODS.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`mood-chip${day.mood === m.id ? ' active' : ''}`}
+                    aria-pressed={day.mood === m.id}
+                    onClick={() =>
+                      journal.setMood(id, day.mood === m.id ? null : m.id)
+                    }
+                  >
+                    <span aria-hidden="true">{m.icon}</span>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="meta-block">
+              <div className="field-label">Étiquettes</div>
+              <div className="tag-editor" role="group" aria-label="Étiquettes du jour">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.toLocaleLowerCase('fr')}
+                    type="button"
+                    className="tag-chip"
+                    onClick={() => removeTag(tag)}
+                    aria-label={`Retirer l’étiquette ${tag}`}
+                    title="Retirer"
+                  >
+                    <span>{tag}</span>
+                    <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+                <input
+                  className="tag-input"
+                  type="text"
+                  placeholder="Ajouter…"
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitTag();
+                    }
+                  }}
+                  onBlur={() => {
+                    if (tagDraft.trim()) commitTag();
+                  }}
+                  aria-label="Ajouter une étiquette"
+                  enterKeyHint="done"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                />
+              </div>
+              <p className="tag-hint muted">
+                Entrée pour ajouter · toucher une étiquette pour la retirer
+              </p>
+            </div>
+
+            <div className="meta-block">
+              <div className="field-label">Photos</div>
+              <div className="photos-grid">
+                {day.photos.map((p) => (
+                  <div key={p.id} className="photo-tile">
+                    <img src={p.url} alt="" loading="lazy" />
+                    <div className="photo-actions">
+                      <button
+                        type="button"
+                        className={p.pinned ? 'pinned' : ''}
+                        title="Épingler"
+                        aria-label="Épingler"
+                        aria-pressed={!!p.pinned}
+                        onClick={() => journal.pinPhoto(id, p.id)}
+                      >
+                        ✦
+                      </button>
+                      <button
+                        type="button"
+                        title="Retirer"
+                        aria-label="Retirer la photo"
+                        onClick={() => journal.removePhoto(id, p.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
                 <button
                   type="button"
-                  className="btn-ghost lieu-gps-btn"
-                  onClick={cancelGeo}
+                  className="add-photo"
+                  onClick={openCapture}
+                  disabled={photoBusy}
                 >
-                  Annuler
+                  <span className="add-photo-icon" aria-hidden="true">
+                    ＋
+                  </span>
+                  <span className="add-photo-label">
+                    {photoBusy ? 'Ajout…' : 'Ajouter'}
+                  </span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-ghost lieu-gps-btn"
-                  onClick={locateMe}
-                  title="Remplir le lieu depuis la position de l’appareil"
-                >
-                  Ma position
-                </button>
-              )
+              </div>
+
+              {photoError ? (
+                <p className="photo-error muted" role="alert">
+                  {photoError}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="day-actions" role="group" aria-label="Actions du jour">
+              <button
+                type="button"
+                className={`btn-ghost day-action-btn${day.pinned ? ' is-on' : ''}`}
+                onClick={() => journal.updateDay(id, { pinned: !day.pinned })}
+                aria-pressed={!!day.pinned}
+              >
+                {day.pinned ? 'Désépingler le jour' : 'Épingler le jour'}
+              </button>
+              <button
+                type="button"
+                className={`btn-ghost day-action-btn${day.private ? ' is-on' : ''}`}
+                onClick={() => journal.updateDay(id, { private: !day.private })}
+                aria-pressed={!!day.private}
+              >
+                {day.private ? 'Sortir du coffre' : 'Mettre au coffre'}
+              </button>
+            </div>
+            {day.private ? (
+              <p className="muted coffre-hint">
+                Invisible dans le Fil, l&apos;Album et la recherche.
+              </p>
             ) : null}
           </div>
-          {geoBusy ? (
-            <p className="muted lieu-gps-status" aria-live="polite">
-              Localisation…
-            </p>
-          ) : null}
-          {geoError && !geoBusy ? (
-            <p className="muted lieu-gps-status" role="alert">
-              {geoError}
-            </p>
-          ) : null}
-
-          <div className="field-label">Humeur</div>
-          <div className="mood-chips">
-            {MOODS.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={`mood-chip${day.mood === m.id ? ' active' : ''}`}
-                onClick={() =>
-                  journal.setMood(id, day.mood === m.id ? null : m.id)
-                }
-              >
-                <span aria-hidden="true">{m.icon}</span>
-                {m.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="field-label">Étiquettes</div>
-          <div className="tag-editor" role="group" aria-label="Étiquettes du jour">
-            {tags.map((tag) => (
-              <button
-                key={tag.toLocaleLowerCase('fr')}
-                type="button"
-                className="tag-chip"
-                onClick={() => removeTag(tag)}
-                aria-label={`Retirer l’étiquette ${tag}`}
-                title="Retirer"
-              >
-                <span>{tag}</span>
-                <span aria-hidden="true">×</span>
-              </button>
-            ))}
-            <input
-              className="tag-input"
-              type="text"
-              placeholder="Ajouter…"
-              value={tagDraft}
-              onChange={(e) => setTagDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  commitTag();
-                }
-              }}
-              onBlur={() => {
-                if (tagDraft.trim()) commitTag();
-              }}
-              aria-label="Ajouter une étiquette"
-              enterKeyHint="done"
-              autoCapitalize="off"
-              autoCorrect="off"
-            />
-          </div>
-          <p className="tag-hint muted">
-            Entrée pour ajouter · toucher une étiquette pour la retirer
-          </p>
-
-          <div className="field-label">Photos</div>
-          <div className="photos-grid">
-            {day.photos.map((p) => (
-              <div key={p.id} className="photo-tile">
-                <img src={p.url} alt="" loading="lazy" />
-                <div className="photo-actions">
-                  <button
-                    type="button"
-                    className={p.pinned ? 'pinned' : ''}
-                    title="Épingler"
-                    aria-label="Épingler"
-                    onClick={() => journal.pinPhoto(id, p.id)}
-                  >
-                    ✦
-                  </button>
-                  <button
-                    type="button"
-                    title="Retirer"
-                    aria-label="Retirer la photo"
-                    onClick={() => journal.removePhoto(id, p.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="add-photo"
-              onClick={openCapture}
-              disabled={photoBusy}
-            >
-              <span aria-hidden="true">＋</span>
-              {photoBusy ? 'Ajout…' : 'Ajouter'}
-            </button>
-          </div>
-
-          {photoError ? (
-            <p className="muted" style={{ marginTop: 10 }} role="alert">
-              {photoError}
-            </p>
-          ) : null}
-
-          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => journal.updateDay(id, { pinned: !day.pinned })}
-            >
-              {day.pinned ? 'Désépingler le jour' : 'Épingler le jour'}
-            </button>
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => journal.updateDay(id, { private: !day.private })}
-            >
-              {day.private ? 'Sortir du coffre' : 'Mettre au coffre'}
-            </button>
-          </div>
-          {day.private ? (
-            <p className="muted coffre-hint">
-              Invisible dans le Fil, l&apos;Album et la recherche.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+      </section>
 
       <button type="button" className="btn-danger" onClick={handleDelete}>
         Effacer cette journée
