@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { DayCard } from '../components/DayCard';
 import type { JournalApi } from '../hooks/useJournal';
+import {
+  downloadReadableExport,
+  parseBackupFile,
+} from '../lib/exportJournal';
 
 interface Props {
   journal: JournalApi;
@@ -13,6 +17,218 @@ const HOUR_OPTIONS = [20, 21, 22] as const;
 
 function hourLabel(h: number): string {
   return `${h} h`;
+}
+
+
+function ReglagesSection({
+  journal,
+  onApropos,
+  onBack,
+}: {
+  journal: JournalApi;
+  onApropos: () => void;
+  onBack: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reminderOn = journal.eveningReminder;
+  const hour = journal.eveningHour;
+
+  const handleExportBackup = () => {
+    setError(null);
+    try {
+      journal.exportBackup();
+    } catch {
+      setError('Impossible d’exporter la sauvegarde.');
+    }
+  };
+
+  const handleImportClick = () => {
+    setError(null);
+    fileRef.current?.click();
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const next = await parseBackupFile(file);
+      const ok = window.confirm(
+        'Remplacer tout le journal local par cette sauvegarde ?',
+      );
+      if (ok) {
+        journal.importBackup(next);
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Impossible d’importer ce fichier.';
+      setError(msg);
+      window.alert(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReadableExport = () => {
+    setError(null);
+    setBusy(true);
+    try {
+      downloadReadableExport(journal.state);
+    } catch {
+      setError('Impossible de générer l’export lisible.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <button type="button" className="btn-ghost" onClick={onBack} style={{ marginBottom: 14 }}>
+        ← Retour
+      </button>
+      <h1 className="page-title">Réglages</h1>
+      <div className="drawer-card">
+        <button
+          type="button"
+          className="drawer-row"
+          onClick={() => journal.removeSamples()}
+          disabled={busy}
+        >
+          <div className="left">
+            Retirer les exemples
+            <span>
+              {journal.samplesPresent
+                ? 'Supprimer les jours d’exemple'
+                : 'Aucun exemple présent'}
+            </span>
+          </div>
+        </button>
+        {!journal.samplesPresent ? (
+          <button
+            type="button"
+            className="drawer-row"
+            onClick={() => journal.restoreSamples()}
+            disabled={busy}
+          >
+            <div className="left">
+              Restaurer les exemples
+              <span>Réintroduire les trois jours démo</span>
+            </div>
+          </button>
+        ) : null}
+
+        <div className="drawer-row">
+          <div className="left">
+            Rappel du soir
+            <span>Si tu n&apos;as pas écrit, un geste discret.</span>
+          </div>
+          <button
+            type="button"
+            className={`toggle${reminderOn ? ' on' : ''}`}
+            role="switch"
+            aria-checked={reminderOn}
+            aria-label="Rappel du soir"
+            onClick={() => journal.setEveningReminder(!reminderOn)}
+            disabled={busy}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
+        {reminderOn ? (
+          <div className="drawer-row evening-hour-row">
+            <div className="left">
+              Heure
+              <span>Sur cet appareil seulement</span>
+            </div>
+            <div className="hour-chips" role="group" aria-label="Heure du rappel">
+              {HOUR_OPTIONS.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  className={`hour-chip${hour === h ? ' active' : ''}`}
+                  onClick={() => journal.setEveningHour(h)}
+                  disabled={busy}
+                >
+                  {hourLabel(h)}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          className="drawer-row"
+          onClick={handleExportBackup}
+          disabled={busy}
+        >
+          <div className="left">
+            Exporter la sauvegarde
+            <span>JSON complet, avec le coffre</span>
+          </div>
+        </button>
+        <button
+          type="button"
+          className="drawer-row"
+          onClick={handleImportClick}
+          disabled={busy}
+        >
+          <div className="left">
+            Importer une sauvegarde
+            <span>Remplace le journal sur cet appareil</span>
+          </div>
+        </button>
+        <button
+          type="button"
+          className="drawer-row"
+          onClick={handleReadableExport}
+          disabled={busy}
+        >
+          <div className="left">
+            Exporter en lecture
+            <span>
+              {busy
+                ? 'Génération en cours…'
+                : 'HTML à ouvrir ou imprimer en PDF'}
+            </span>
+          </div>
+        </button>
+        {error ? (
+          <p className="muted" style={{ margin: '8px 14px 12px', fontSize: '0.85rem' }}>
+            {error}
+          </p>
+        ) : null}
+
+        <div className="drawer-row">
+          <div className="left">
+            Langue
+            <span>Français</span>
+          </div>
+        </div>
+        <button type="button" className="drawer-row" onClick={onApropos} disabled={busy}>
+          <div className="left">
+            À propos Sillage
+            <span>Journal intime</span>
+          </div>
+          <span className="chev">›</span>
+        </button>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={handleFileChange}
+      />
+    </div>
+  );
 }
 
 export function TiroirPage({ journal }: Props) {
@@ -101,90 +317,8 @@ export function TiroirPage({ journal }: Props) {
   }
 
   if (section === 'reglages') {
-    const reminderOn = journal.eveningReminder;
-    const hour = journal.eveningHour;
     return (
-      <div>
-        <button type="button" className="btn-ghost" onClick={() => setSection('main')} style={{ marginBottom: 14 }}>
-          ← Retour
-        </button>
-        <h1 className="page-title">Réglages</h1>
-        <div className="drawer-card">
-          <div className="drawer-row">
-            <div className="left">
-              Rappel du soir
-              <span>Si tu n&apos;as pas écrit, un geste discret.</span>
-            </div>
-            <button
-              type="button"
-              className={`toggle${reminderOn ? ' on' : ''}`}
-              role="switch"
-              aria-checked={reminderOn}
-              aria-label="Rappel du soir"
-              onClick={() => journal.setEveningReminder(!reminderOn)}
-            >
-              <span className="toggle-knob" />
-            </button>
-          </div>
-          {reminderOn ? (
-            <div className="drawer-row evening-hour-row">
-              <div className="left">
-                Heure
-                <span>Sur cet appareil seulement</span>
-              </div>
-              <div className="hour-chips" role="group" aria-label="Heure du rappel">
-                {HOUR_OPTIONS.map((h) => (
-                  <button
-                    key={h}
-                    type="button"
-                    className={`hour-chip${hour === h ? ' active' : ''}`}
-                    onClick={() => journal.setEveningHour(h)}
-                  >
-                    {hourLabel(h)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <button type="button" className="drawer-row" onClick={() => journal.removeSamples()}>
-            <div className="left">
-              Retirer les exemples
-              <span>
-                {journal.samplesPresent
-                  ? 'Supprimer les jours d’exemple'
-                  : 'Aucun exemple présent'}
-              </span>
-            </div>
-          </button>
-          {!journal.samplesPresent ? (
-            <button type="button" className="drawer-row" onClick={() => journal.restoreSamples()}>
-              <div className="left">
-                Restaurer les exemples
-                <span>Réintroduire les trois jours démo</span>
-              </div>
-            </button>
-          ) : null}
-          <div className="drawer-row">
-            <div className="left">
-              Langue
-              <span>Français</span>
-            </div>
-          </div>
-          <button type="button" className="drawer-row" onClick={() => setSection('apropos')}>
-            <div className="left">
-              À propos Sillage
-              <span>Journal intime</span>
-            </div>
-            <span className="chev">›</span>
-          </button>
-          <div className="drawer-row">
-            <div className="left">
-              Export
-              <span>Bientôt</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ReglagesSection journal={journal} onApropos={() => setSection('apropos')} onBack={() => setSection('main')} />
     );
   }
 

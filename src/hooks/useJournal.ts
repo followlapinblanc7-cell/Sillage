@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DayEntry, JournalState, MoodId, Photo } from '../types';
 import { SAMPLE_DAYS } from '../data/sampleData';
+import { downloadBackup } from '../lib/exportJournal';
 
 const STORAGE_KEY = 'sillage-journal-v1';
 
@@ -285,6 +286,19 @@ export function useJournal() {
     return SAMPLE_DAYS.some((s) => state.days[s.id]);
   }, [state.days]);
 
+  const exportBackup = useCallback(() => {
+    downloadBackup(state);
+  }, [state]);
+
+  const importBackup = useCallback((next: JournalState) => {
+    setState({
+      ...next,
+      eveningReminder: next.eveningReminder ?? false,
+      eveningHour: clampEveningHour(next.eveningHour ?? 21),
+      eveningDismissedOn: next.eveningDismissedOn,
+    });
+  }, []);
+
   const eveningReminder = state.eveningReminder ?? false;
   const eveningHour = clampEveningHour(state.eveningHour ?? 21);
   const eveningDismissedOn = state.eveningDismissedOn;
@@ -317,6 +331,8 @@ export function useJournal() {
     setEveningReminder,
     setEveningHour,
     dismissEveningReminder,
+    exportBackup,
+    importBackup,
   };
 }
 
