@@ -7,6 +7,7 @@ import {
   type JournalApi,
 } from '../hooks/useJournal';
 import { reverseGeocode } from '../lib/geocode';
+import { LieuField } from '../components/LieuField';
 import { CoffreUnlock } from '../components/CoffreUnlock';
 import { PhotoCaptureSheet } from '../components/PhotoCaptureSheet';
 
@@ -349,16 +350,12 @@ export function DayPage({ journal }: Props) {
         <div className="meta-panel">
           <div className="field-label">Lieu</div>
           <div className="lieu-row">
-            <input
-              className="lieu-input"
-              type="text"
-              placeholder="Où étais-tu ?"
+            <LieuField
               value={day.location}
-              onChange={(e) => {
+              onChange={(location) => {
                 setGeoError(null);
-                journal.updateDay(id, { location: e.target.value });
+                journal.updateDay(id, { location });
               }}
-              aria-label="Lieu"
             />
             {geoSupported ? (
               geoBusy ? (
