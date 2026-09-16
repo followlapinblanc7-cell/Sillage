@@ -80,6 +80,8 @@ a,
 .search-result,
 .day-card,
 .week-day,
+.week-nav,
+.week-today-chip,
 .album-cover,
 .add-photo,
 .back-btn,
@@ -316,13 +318,80 @@ img {
   margin: 8px 0 18px;
 }
 
+.week-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .week-label {
+  flex: 1;
+  text-align: center;
   font-size: 0.7rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin-bottom: 10px;
   font-weight: 500;
+  min-width: 0;
+}
+
+.week-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.week-nav:hover {
+  color: var(--cream);
+  border-color: var(--border-strong);
+  background: var(--bg-soft);
+}
+
+.week-nav:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.week-today-row {
+  display: flex;
+  justify-content: center;
+  margin: -2px 0 10px;
+}
+
+.week-today-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.week-today-chip:hover {
+  color: var(--cream);
+  border-color: rgba(168, 72, 72, 0.45);
+  background: var(--accent-soft);
+}
+
+.week-hint {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
 }
 
 .week-strip {

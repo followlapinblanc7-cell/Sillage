@@ -743,8 +743,8 @@ export function formatDayNumber(id: string): number {
   return Number(id.split('-')[2]);
 }
 
-export function weekDaysAround(today: string): string[] {
-  const [y, m, d] = today.split('-').map(Number);
+export function weekDaysAround(refDay: string): string[] {
+  const [y, m, d] = refDay.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   const dow = date.getDay(); // 0=Sun
   // Monday-start week
@@ -757,6 +757,65 @@ export function weekDaysAround(today: string): string[] {
     ids.push(toId(x));
   }
   return ids;
+}
+
+/** Shift a date id by N weeks (positive = future). */
+export function shiftWeek(id: string, deltaWeeks: number): string {
+  const [y, m, d] = id.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + deltaWeeks * 7);
+  return toId(date);
+}
+
+function parseId(id: string): Date {
+  const [y, m, d] = id.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Short FR range label from Mon–Sun strip ids, e.g. « 8–14 septembre ». */
+export function formatWeekRange(ids: string[]): string {
+  if (!ids.length) return '';
+  const first = parseId(ids[0]);
+  const last = parseId(ids[ids.length - 1]);
+  const sameMonth =
+    first.getMonth() === last.getMonth() &&
+    first.getFullYear() === last.getFullYear();
+  const sameYear = first.getFullYear() === last.getFullYear();
+  const thisYear = new Date().getFullYear();
+
+  const monthName = (date: Date) =>
+    date.toLocaleDateString('fr-FR', { month: 'long' });
+
+  if (sameMonth) {
+    const month = monthName(first);
+    const range = `${first.getDate()}–${last.getDate()} ${month}`;
+    if (first.getFullYear() !== thisYear) {
+      return `${range} ${first.getFullYear()}`;
+    }
+    return range;
+  }
+
+  if (sameYear) {
+    const left = `${first.getDate()} ${monthName(first)}`;
+    const right = `${last.getDate()} ${monthName(last)}`;
+    const range = `${left} – ${right}`;
+    if (first.getFullYear() !== thisYear) {
+      return `${range} ${first.getFullYear()}`;
+    }
+    return range;
+  }
+
+  const left = first.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const right = last.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  return `${left} – ${right}`;
 }
 
 export type JournalApi = ReturnType<typeof useJournal>;
