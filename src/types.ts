@@ -36,6 +36,8 @@ export interface JournalState {
   eveningHour?: number;
   /** Date id YYYY-MM-DD when evening banner was dismissed */
   eveningDismissedOn?: string;
+  /** True after user photos have been migrated into IndexedDB */
+  photosInIdb?: boolean;
 }
 
 export const MOODS: { id: MoodId; label: string; icon: string }[] = [

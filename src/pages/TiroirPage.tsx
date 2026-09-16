@@ -36,12 +36,15 @@ function ReglagesSection({
   const reminderOn = journal.eveningReminder;
   const hour = journal.eveningHour;
 
-  const handleExportBackup = () => {
+  const handleExportBackup = async () => {
     setError(null);
+    setBusy(true);
     try {
-      journal.exportBackup();
+      await journal.exportBackup();
     } catch {
       setError('Impossible d’exporter la sauvegarde.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -62,7 +65,7 @@ function ReglagesSection({
         'Remplacer tout le journal local par cette sauvegarde ?',
       );
       if (ok) {
-        journal.importBackup(next);
+        await journal.importBackup(next);
       }
     } catch (err) {
       const msg =
@@ -76,11 +79,11 @@ function ReglagesSection({
     }
   };
 
-  const handleReadableExport = () => {
+  const handleReadableExport = async () => {
     setError(null);
     setBusy(true);
     try {
-      downloadReadableExport(journal.state);
+      await downloadReadableExport(journal.state);
     } catch {
       setError('Impossible de générer l’export lisible.');
     } finally {

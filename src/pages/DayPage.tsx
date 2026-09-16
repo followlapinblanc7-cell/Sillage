@@ -138,7 +138,7 @@ export function DayPage({ journal }: Props) {
     setPhotoError(null);
     try {
       for (const dataUrl of dataUrls) {
-        journal.addPhoto(id, dataUrl);
+        await journal.addPhoto(id, dataUrl);
       }
       setMetaOpen(true);
     } catch (e) {

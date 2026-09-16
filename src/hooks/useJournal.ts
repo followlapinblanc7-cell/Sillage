@@ -1,7 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DayEntry, JournalState, MoodId, Photo } from '../types';
 import { SAMPLE_DAYS } from '../data/sampleData';
 import { downloadBackup } from '../lib/exportJournal';
+import {
+  blobToObjectUrl,
+  dataUrlToBlob,
+  idbClearAll,
+  idbDeletePhoto,
+  idbDeletePhotos,
+  idbGetPhoto,
+  idbPutPhoto,
+  isBlobUrl,
+  isDataUrl,
+  isInlineRemoteUrl,
+  materializePhotosForExport,
+  stripPhotosForStorage,
+} from '../lib/photoStore';
 
 const STORAGE_KEY = 'sillage-journal-v1';
 
@@ -46,6 +60,7 @@ function loadState(): JournalState {
           eveningReminder: parsed.eveningReminder ?? false,
           eveningHour: clampEveningHour(parsed.eveningHour ?? 21),
           eveningDismissedOn: parsed.eveningDismissedOn,
+          photosInIdb: parsed.photosInIdb,
         };
       }
     }
@@ -60,23 +75,247 @@ function loadState(): JournalState {
     version: 1,
     eveningReminder: false,
     eveningHour: 21,
+    photosInIdb: true,
   };
 }
 
 function saveState(state: JournalState) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const stripped = stripPhotosForStorage(state);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
   } catch (e) {
     console.error('Sillage storage', e);
     throw e;
   }
 }
 
+function rememberObjectUrl(
+  map: Map<string, string>,
+  photoId: string,
+  objectUrl: string,
+) {
+  const prev = map.get(photoId);
+  if (prev && prev !== objectUrl) {
+    try {
+      URL.revokeObjectURL(prev);
+    } catch {
+      /* ignore */
+    }
+  }
+  map.set(photoId, objectUrl);
+}
+
+function revokeTracked(map: Map<string, string>, photoId: string) {
+  const prev = map.get(photoId);
+  if (prev) {
+    try {
+      URL.revokeObjectURL(prev);
+    } catch {
+      /* ignore */
+    }
+    map.delete(photoId);
+  }
+}
+
+function revokeAll(map: Map<string, string>) {
+  for (const url of map.values()) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      /* ignore */
+    }
+  }
+  map.clear();
+}
+
+/** Hydrate photos from IDB / migrate data: URLs into IDB + object URLs. */
+async function hydrateAndMigrate(
+  state: JournalState,
+  objectUrls: Map<string, string>,
+): Promise<JournalState> {
+  const days: Record<string, DayEntry> = {};
+
+  for (const [dayId, day] of Object.entries(state.days)) {
+    const photos: Photo[] = [];
+    for (const p of day.photos) {
+      const url = p.url ?? '';
+
+      if (isInlineRemoteUrl(url)) {
+        photos.push({ ...p, url });
+        continue;
+      }
+
+      if (isDataUrl(url)) {
+        try {
+          const blob = await dataUrlToBlob(url);
+          await idbPutPhoto(p.id, blob);
+          const objectUrl = blobToObjectUrl(blob);
+          rememberObjectUrl(objectUrls, p.id, objectUrl);
+          photos.push({ ...p, url: objectUrl });
+        } catch (e) {
+          console.error('Sillage migrate photo', p.id, e);
+          photos.push({ ...p, url: '' });
+        }
+        continue;
+      }
+
+      if (isBlobUrl(url)) {
+        // Already an object URL in this session — keep and track
+        rememberObjectUrl(objectUrls, p.id, url);
+        photos.push({ ...p, url });
+        continue;
+      }
+
+      // Missing / empty url — load from IDB
+      try {
+        const blob = await idbGetPhoto(p.id);
+        if (blob) {
+          const objectUrl = blobToObjectUrl(blob);
+          rememberObjectUrl(objectUrls, p.id, objectUrl);
+          photos.push({ ...p, url: objectUrl });
+        } else {
+          // Broken photo — keep entry with empty url so user can remove
+          photos.push({ ...p, url: '' });
+        }
+      } catch (e) {
+        console.error('Sillage hydrate photo', p.id, e);
+        photos.push({ ...p, url: '' });
+      }
+    }
+    days[dayId] = { ...day, photos };
+  }
+
+  return { ...state, days, photosInIdb: true };
+}
+
+/** Import: put data-url photos into IDB, produce runtime object URLs. */
+async function prepareImportedState(
+  next: JournalState,
+  objectUrls: Map<string, string>,
+): Promise<JournalState> {
+  await idbClearAll();
+  revokeAll(objectUrls);
+
+  const days: Record<string, DayEntry> = {};
+  for (const [dayId, day] of Object.entries(next.days)) {
+    const photos: Photo[] = [];
+    for (const p of day.photos) {
+      const url = p.url ?? '';
+      if (isInlineRemoteUrl(url)) {
+        photos.push({ ...p, url });
+        continue;
+      }
+      if (isDataUrl(url)) {
+        try {
+          const blob = await dataUrlToBlob(url);
+          await idbPutPhoto(p.id, blob);
+          const objectUrl = blobToObjectUrl(blob);
+          rememberObjectUrl(objectUrls, p.id, objectUrl);
+          photos.push({ ...p, url: objectUrl });
+        } catch (e) {
+          console.error('Sillage import photo', p.id, e);
+          photos.push({ ...p, url: '' });
+        }
+        continue;
+      }
+      // Already stripped / blob — try IDB (just cleared, so likely empty)
+      try {
+        const blob = await idbGetPhoto(p.id);
+        if (blob) {
+          const objectUrl = blobToObjectUrl(blob);
+          rememberObjectUrl(objectUrls, p.id, objectUrl);
+          photos.push({ ...p, url: objectUrl });
+        } else {
+          photos.push({ ...p, url: '' });
+        }
+      } catch {
+        photos.push({ ...p, url: '' });
+      }
+    }
+    days[dayId] = { ...day, photos };
+  }
+
+  return {
+    ...next,
+    days,
+    eveningReminder: next.eveningReminder ?? false,
+    eveningHour: clampEveningHour(next.eveningHour ?? 21),
+    eveningDismissedOn: next.eveningDismissedOn,
+    photosInIdb: true,
+  };
+}
+
+
+function mergeHydratedPhotos(
+  prev: JournalState,
+  hydrated: JournalState,
+): JournalState {
+  const days: Record<string, DayEntry> = { ...prev.days };
+  for (const [dayId, hDay] of Object.entries(hydrated.days)) {
+    const pDay = days[dayId];
+    if (!pDay) {
+      days[dayId] = hDay;
+      continue;
+    }
+    const urlById = new Map(hDay.photos.map((p) => [p.id, p.url]));
+    days[dayId] = {
+      ...pDay,
+      photos: pDay.photos.map((p) => ({
+        ...p,
+        url: urlById.has(p.id) ? (urlById.get(p.id) as string) : p.url,
+      })),
+    };
+  }
+  return { ...prev, days, photosInIdb: true };
+}
+
 export function useJournal() {
   const [state, setState] = useState<JournalState>(() => loadState());
+  const [photosReady, setPhotosReady] = useState(false);
+  const objectUrlsRef = useRef<Map<string, string>>(new Map());
+  const skipSaveRef = useRef(true);
+  const hydrateGenRef = useRef(0);
 
+  // Hydrate / migrate on mount (from initial LS snapshot; data URLs still display until done)
   useEffect(() => {
-    saveState(state);
+    const gen = ++hydrateGenRef.current;
+    let cancelled = false;
+    const snapshot = loadState();
+
+    (async () => {
+      try {
+        const hydrated = await hydrateAndMigrate(
+          snapshot,
+          objectUrlsRef.current,
+        );
+        if (cancelled || gen !== hydrateGenRef.current) return;
+        setState((prev) => mergeHydratedPhotos(prev, hydrated));
+      } catch (e) {
+        console.error('Sillage hydrate', e);
+      } finally {
+        if (!cancelled && gen === hydrateGenRef.current) {
+          setPhotosReady(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      revokeAll(objectUrlsRef.current);
+    };
+  }, []);
+
+  // Persist (stripped) whenever state changes — skip first paint
+  useEffect(() => {
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
+    try {
+      saveState(state);
+    } catch {
+      /* surfaced elsewhere when adding photos */
+    }
   }, [state]);
 
   const today = todayId();
@@ -128,6 +367,12 @@ export function useJournal() {
 
   const deleteDay = useCallback((id: string) => {
     setState((prev) => {
+      const current = prev.days[id];
+      if (current?.photos.length) {
+        const ids = current.photos.map((p) => p.id);
+        for (const pid of ids) revokeTracked(objectUrlsRef.current, pid);
+        void idbDeletePhotos(ids);
+      }
       const next = { ...prev.days };
       delete next[id];
       return { ...prev, days: next };
@@ -154,10 +399,22 @@ export function useJournal() {
     });
   }, []);
 
-  const addPhoto = useCallback((dayId: string, url: string) => {
+  const addPhoto = useCallback(async (dayId: string, dataUrl: string) => {
+    const photoId = `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const blob = await dataUrlToBlob(dataUrl);
+    try {
+      await idbPutPhoto(photoId, blob);
+    } catch (e) {
+      console.error('Sillage idb put', e);
+      throw e instanceof Error
+        ? e
+        : new Error('Impossible d’enregistrer la photo.');
+    }
+    const objectUrl = blobToObjectUrl(blob);
+    rememberObjectUrl(objectUrlsRef.current, photoId, objectUrl);
     const photo: Photo = {
-      id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      url,
+      id: photoId,
+      url: objectUrl,
       pinned: false,
     };
     setState((prev) => {
@@ -167,6 +424,7 @@ export function useJournal() {
       photos.push(photo);
       return {
         ...prev,
+        photosInIdb: true,
         days: {
           ...prev.days,
           [dayId]: { ...current, photos, updatedAt: new Date().toISOString() },
@@ -194,6 +452,8 @@ export function useJournal() {
   }, []);
 
   const removePhoto = useCallback((dayId: string, photoId: string) => {
+    revokeTracked(objectUrlsRef.current, photoId);
+    void idbDeletePhoto(photoId);
     setState((prev) => {
       const current = prev.days[dayId];
       if (!current) return prev;
@@ -286,17 +546,14 @@ export function useJournal() {
     return SAMPLE_DAYS.some((s) => state.days[s.id]);
   }, [state.days]);
 
-  const exportBackup = useCallback(() => {
-    downloadBackup(state);
+  const exportBackup = useCallback(async () => {
+    const full = await materializePhotosForExport(state);
+    downloadBackup(full);
   }, [state]);
 
-  const importBackup = useCallback((next: JournalState) => {
-    setState({
-      ...next,
-      eveningReminder: next.eveningReminder ?? false,
-      eveningHour: clampEveningHour(next.eveningHour ?? 21),
-      eveningDismissedOn: next.eveningDismissedOn,
-    });
+  const importBackup = useCallback(async (next: JournalState) => {
+    const prepared = await prepareImportedState(next, objectUrlsRef.current);
+    setState(prepared);
   }, []);
 
   const eveningReminder = state.eveningReminder ?? false;
@@ -305,6 +562,7 @@ export function useJournal() {
 
   return {
     state,
+    photosReady,
     today,
     allDays,
     visibleDays,

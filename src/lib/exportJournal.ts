@@ -1,5 +1,8 @@
 import type { DayEntry, JournalState } from '../types';
 import { moodLabel } from '../types';
+import { materializePhotosForExport } from './photoStore';
+
+export { materializePhotosForExport } from './photoStore';
 
 function hasContent(d: DayEntry): boolean {
   return !!(
@@ -279,8 +282,9 @@ export function buildReadableHtml(state: JournalState): string {
 </html>`;
 }
 
-export function downloadReadableExport(state: JournalState): void {
-  const html = buildReadableHtml(state);
+export async function downloadReadableExport(state: JournalState): Promise<void> {
+  const full = await materializePhotosForExport(state);
+  const html = buildReadableHtml(full);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   triggerDownload(`sillage-lecture-${todayStamp()}.html`, blob);
 }
