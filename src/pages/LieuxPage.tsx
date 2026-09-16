@@ -15,7 +15,9 @@ import {
   type LeafletMap,
   type LeafletMarker,
   type LeafletNamespace,
+  type LeafletTileLayer,
 } from '../lib/loadLeaflet';
+import { CARTO_TILES } from '../lib/theme';
 
 interface Props {
   journal: JournalApi;
@@ -71,6 +73,7 @@ export function LieuxPage({ journal }: Props) {
 
   const mapElRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
+  const tilesRef = useRef<LeafletTileLayer | null>(null);
   const markersRef = useRef<Map<string, LeafletMarker>>(new Map());
   const LRef = useRef<LeafletNamespace | null>(null);
   const lieuxRef = useRef(lieux);
@@ -168,20 +171,18 @@ export function LieuxPage({ journal }: Props) {
 
         L.control.zoom({ position: 'topright' }).addTo(map);
 
-        const tiles = L.tileLayer(
-          'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          {
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · <a href="https://carto.com/">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 19,
-          },
-        );
+        const tiles = L.tileLayer(CARTO_TILES[journal.theme], {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · <a href="https://carto.com/">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 19,
+        });
         tiles.on('tileerror', () => {
           tileErrorCount += 1;
           if (tileErrorCount >= 6) setTilesFailed(true);
         });
         tiles.addTo(map);
+        tilesRef.current = tiles;
 
         mapRef.current = map;
         setMapReady(true);
@@ -209,11 +210,22 @@ export function LieuxPage({ journal }: Props) {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
+        tilesRef.current = null;
       }
       LRef.current = null;
       setMapReady(false);
     };
   }, [hasLieux]);
+
+  // Match basemap to appearance (dark_all ↔ Voyager)
+  useEffect(() => {
+    const tiles = tilesRef.current;
+    if (!tiles || !mapReady) return;
+    setTilesFailed(false);
+    tiles.setUrl(CARTO_TILES[journal.theme]);
+  }, [journal.theme, mapReady]);
+
+
 
   // Upsert markers when coords change (not on mere selection)
   useEffect(() => {

@@ -69,6 +69,8 @@ export interface JournalState {
   photosInIdb?: boolean;
   /** Soft PIN for Coffre UI gate — salt + PBKDF2 hash only; null/absent = no PIN */
   coffrePin?: { salt: string; hash: string } | null;
+  /** Appearance: dark (default) or literary light */
+  theme?: 'dark' | 'light';
   /** Selected past day for « Une trace » soft resurfacing */
   traceDayId?: string;
   /** Calendar day (YYYY-MM-DD) when traceDayId was chosen */

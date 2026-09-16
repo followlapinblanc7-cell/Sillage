@@ -1,6 +1,7 @@
 @import './fonts.css';
 
-:root {
+:root,
+[data-theme='dark'] {
   --bg: #1a1210;
   --bg-elevated: #221814;
   --bg-card: #2a1e1a;
@@ -20,7 +21,66 @@
   --radius: 14px;
   --radius-sm: 10px;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --nav-bg: rgba(26, 18, 16, 0.94);
+  --scrim: rgba(26, 18, 16, 0.78);
+  --scrim-strong: rgba(26, 18, 16, 0.88);
+  --banner-bg: rgba(40, 28, 28, 0.55);
+  --featured-from: #32221e;
+  --featured-to: #241814;
+  --map-bg: #16110f;
+  --camera-stage: #0d0908;
+  --wash: rgba(245, 237, 228, 0.03);
+  --wash-strong: rgba(245, 237, 228, 0.04);
+  --dashed: rgba(245, 237, 228, 0.22);
+  --ink-soft: rgba(245, 237, 228, 0.72);
+  --pin-ring: rgba(245, 237, 228, 0.88);
+  --root-glow: rgba(139, 58, 58, 0.12);
+  --leaflet-ctrl-bg: rgba(34, 24, 20, 0.92);
+  --leaflet-ctrl-hover: rgba(42, 30, 26, 0.98);
+  --leaflet-attr-bg: rgba(22, 17, 15, 0.72);
+  --toggle-track: rgba(255, 255, 255, 0.08);
+  --shutter-press: #e8dfd4;
+  --brand-ring: rgba(245, 237, 228, 0.12);
   color-scheme: dark;
+}
+
+/* Literary day — warm paper / soft brown ink / same bordeaux family */
+[data-theme='light'] {
+  --bg: #f3ebe1;
+  --bg-elevated: #faf6ef;
+  --bg-card: #faf6ef;
+  --bg-soft: #ebe2d6;
+  --border: rgba(62, 42, 34, 0.1);
+  --border-strong: rgba(62, 42, 34, 0.18);
+  --text: #3d2a22;
+  --text-muted: rgba(61, 42, 34, 0.68);
+  --text-faint: rgba(61, 42, 34, 0.48);
+  --accent: #8b3a3a;
+  --accent-bright: #9c3a3a;
+  --accent-soft: rgba(139, 58, 58, 0.14);
+  --cream: #2c1f1a;
+  --shadow: 0 8px 28px rgba(62, 42, 34, 0.1);
+  --nav-bg: rgba(250, 246, 239, 0.94);
+  --scrim: rgba(44, 31, 26, 0.72);
+  --scrim-strong: rgba(44, 31, 26, 0.82);
+  --banner-bg: rgba(139, 58, 58, 0.08);
+  --featured-from: #f0e4d6;
+  --featured-to: #e8d9c8;
+  --map-bg: #e8dfd4;
+  --camera-stage: #0d0908;
+  --wash: rgba(62, 42, 34, 0.04);
+  --wash-strong: rgba(62, 42, 34, 0.06);
+  --dashed: rgba(62, 42, 34, 0.22);
+  --ink-soft: rgba(61, 42, 34, 0.72);
+  --pin-ring: rgba(250, 246, 239, 0.95);
+  --root-glow: rgba(139, 58, 58, 0.08);
+  --leaflet-ctrl-bg: rgba(250, 246, 239, 0.94);
+  --leaflet-ctrl-hover: rgba(243, 235, 225, 0.98);
+  --leaflet-attr-bg: rgba(250, 246, 239, 0.82);
+  --toggle-track: rgba(62, 42, 34, 0.1);
+  --shutter-press: #d9cfc2;
+  --brand-ring: rgba(62, 42, 34, 0.12);
+  color-scheme: light;
 }
 
 *,
@@ -44,7 +104,6 @@ body {
   font-size: 16px;
   line-height: 1.5;
   color: var(--text);
-  background: #1a1210;
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -58,7 +117,7 @@ body {
   display: flex;
   justify-content: center;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139, 58, 58, 0.12), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--root-glow), transparent),
     var(--bg);
 }
 
@@ -182,7 +241,7 @@ img {
   place-items: center;
   flex-shrink: 0;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(245, 237, 228, 0.12);
+  box-shadow: inset 0 0 0 1px var(--brand-ring);
 }
 
 .brand-mark svg {
@@ -221,7 +280,7 @@ img {
   grid-template-columns: repeat(4, 1fr);
   align-items: center;
   gap: 2px;
-  background: rgba(26, 18, 16, 0.94);
+  background: var(--nav-bg);
   backdrop-filter: blur(14px);
   border-top: 1px solid var(--border);
   z-index: 40;
@@ -283,7 +342,7 @@ img {
 
 .day-card.featured {
   border-color: rgba(184, 81, 81, 0.45);
-  background: linear-gradient(160deg, #32221e 0%, #241814 100%);
+  background: linear-gradient(160deg, var(--featured-from) 0%, var(--featured-to) 100%);
 }
 
 .day-card-title {
@@ -558,7 +617,7 @@ img {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(40, 28, 28, 0.55);
+  background: var(--banner-bg);
   border: 1px solid rgba(184, 81, 81, 0.28);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -613,7 +672,7 @@ img {
 .trace-hero {
   display: flex;
   flex-direction: column;
-  background: linear-gradient(165deg, #32221e 0%, #241814 100%);
+  background: linear-gradient(165deg, var(--featured-from) 0%, var(--featured-to) 100%);
   border: 1px solid rgba(184, 81, 81, 0.4);
   border-radius: var(--radius);
   overflow: hidden;
@@ -709,7 +768,7 @@ img {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(40, 28, 28, 0.55);
+  background: var(--banner-bg);
   border: 1px solid rgba(184, 81, 81, 0.28);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -828,7 +887,7 @@ img {
 }
 
 .save-status.is-saved {
-  color: rgba(245, 237, 228, 0.72);
+  color: var(--ink-soft);
 }
 
 .save-status.is-idle {
@@ -1149,7 +1208,7 @@ img {
   padding: 7px 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(245, 237, 228, 0.03);
+  background: var(--wash);
   color: var(--text-muted);
   font-size: 0.82rem;
   letter-spacing: 0.01em;
@@ -1262,7 +1321,7 @@ img {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(26, 18, 16, 0.78);
+  background: var(--scrim);
   color: var(--cream);
   font-size: 0.8rem;
   display: grid;
@@ -1280,13 +1339,13 @@ img {
 .photo-actions button.pinned {
   color: #f0c27a;
   border-color: rgba(240, 194, 122, 0.55);
-  background: rgba(26, 18, 16, 0.88);
+  background: var(--scrim-strong);
 }
 
 .add-photo {
   aspect-ratio: 1;
   border-radius: var(--radius);
-  border: 1.5px dashed rgba(245, 237, 228, 0.22);
+  border: 1.5px dashed var(--dashed);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1294,7 +1353,7 @@ img {
   gap: 8px;
   color: var(--text-muted);
   font-size: 0.85rem;
-  background: rgba(245, 237, 228, 0.025);
+  background: var(--wash);
   min-height: 44px;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
@@ -1703,7 +1762,7 @@ img {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(26, 18, 16, 0.78);
+  background: var(--scrim);
   border: 1px solid var(--border-strong);
   color: var(--cream);
   font-size: 1rem;
@@ -1721,7 +1780,7 @@ img {
   flex: 1;
   position: relative;
   min-height: 0;
-  background: #0d0908;
+  background: var(--camera-stage);
   overflow: hidden;
 }
 
@@ -1794,7 +1853,7 @@ img {
 
 .photo-sheet-shutter:not(:disabled):active {
   transform: scale(0.94);
-  background: #e8dfd4;
+  background: var(--shutter-press);
 }
 
 .photo-sheet-spacer {
@@ -1809,7 +1868,7 @@ img {
   width: 44px;
   height: 26px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--toggle-track);
   border: 1px solid var(--border-strong);
   position: relative;
   flex-shrink: 0;
@@ -1981,7 +2040,7 @@ img {
   border-radius: calc(var(--radius) + 4px);
   overflow: hidden;
   border: 1px solid var(--border);
-  background: #16110f;
+  background: var(--map-bg);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
@@ -1991,7 +2050,7 @@ img {
   height: clamp(240px, 42svh, 360px);
   height: clamp(240px, 42dvh, 360px);
   min-height: 220px;
-  background: #16110f;
+  background: var(--map-bg);
   z-index: 0;
   /* Page scroll wins when the finger starts on the map (touch) */
   touch-action: pan-y;
@@ -2026,7 +2085,7 @@ img {
   min-height: 2.4em;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(26, 18, 16, 0.78);
+  background: var(--scrim);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
@@ -2055,7 +2114,7 @@ img {
   border-radius: 50%;
   background: var(--accent-bright);
   box-shadow:
-    0 0 0 2px rgba(245, 237, 228, 0.88),
+    0 0 0 2px var(--pin-ring),
     0 2px 10px rgba(0, 0, 0, 0.5);
   transition:
     transform 0.2s ease,
@@ -2112,7 +2171,7 @@ img {
 .lieux-row:focus-visible {
   outline: 2px solid var(--accent-bright);
   outline-offset: -2px;
-  background: rgba(245, 237, 228, 0.04);
+  background: var(--wash-strong);
 }
 
 .lieux-row.selected {
@@ -2132,7 +2191,7 @@ img {
 
 .lieux-row-pin.on {
   background: var(--accent-bright);
-  box-shadow: 0 0 0 2px rgba(245, 237, 228, 0.55);
+  box-shadow: 0 0 0 2px var(--pin-ring);
 }
 
 .lieux-row.selected .lieux-row-pin.on,
@@ -2262,9 +2321,9 @@ img {
   color: var(--cream);
 }
 
-/* Leaflet chrome — soft on dark Sillage theme */
+/* Leaflet chrome — follows Sillage theme tokens */
 .lieux-map .leaflet-control-attribution {
-  background: rgba(22, 17, 15, 0.72) !important;
+  background: var(--leaflet-attr-bg) !important;
   color: var(--text-faint) !important;
   font-size: 9px !important;
   max-width: 68%;
@@ -2289,7 +2348,7 @@ img {
   width: 34px !important;
   height: 34px !important;
   line-height: 34px !important;
-  background: rgba(34, 24, 20, 0.92) !important;
+  background: var(--leaflet-ctrl-bg) !important;
   color: var(--cream) !important;
   border-bottom: 1px solid var(--border) !important;
   font-size: 16px !important;
@@ -2302,7 +2361,7 @@ img {
 
 .lieux-map .leaflet-control-zoom a:hover,
 .lieux-map .leaflet-control-zoom a:focus {
-  background: rgba(42, 30, 26, 0.98) !important;
+  background: var(--leaflet-ctrl-hover) !important;
   color: var(--cream) !important;
 }
 

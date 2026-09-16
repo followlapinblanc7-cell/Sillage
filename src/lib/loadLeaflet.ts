@@ -51,6 +51,8 @@ export interface LeafletMarker {
 export interface LeafletTileLayer {
   addTo: (map: LeafletMap) => LeafletTileLayer;
   on: (event: string, fn: () => void) => LeafletTileLayer;
+  setUrl: (url: string) => LeafletTileLayer;
+  remove: () => void;
 }
 
 export interface LeafletControl {
