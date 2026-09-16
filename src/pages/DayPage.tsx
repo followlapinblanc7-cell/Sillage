@@ -37,6 +37,9 @@ export function DayPage({ journal }: Props) {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [savePhase, setSavePhase] = useState<SavePhase>('idle');
+  const [geoSupported] = useState(
+    () => typeof navigator !== 'undefined' && 'geolocation' in navigator,
+  );
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const geoSessionRef = useRef<{
@@ -357,24 +360,26 @@ export function DayPage({ journal }: Props) {
               }}
               aria-label="Lieu"
             />
-            {geoBusy ? (
-              <button
-                type="button"
-                className="btn-ghost lieu-gps-btn"
-                onClick={cancelGeo}
-              >
-                Annuler
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn-ghost lieu-gps-btn"
-                onClick={locateMe}
-                title="Remplir le lieu depuis la position de l’appareil"
-              >
-                Ma position
-              </button>
-            )}
+            {geoSupported ? (
+              geoBusy ? (
+                <button
+                  type="button"
+                  className="btn-ghost lieu-gps-btn"
+                  onClick={cancelGeo}
+                >
+                  Annuler
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-ghost lieu-gps-btn"
+                  onClick={locateMe}
+                  title="Remplir le lieu depuis la position de l’appareil"
+                >
+                  Ma position
+                </button>
+              )
+            ) : null}
           </div>
           {geoBusy ? (
             <p className="muted lieu-gps-status" aria-live="polite">
