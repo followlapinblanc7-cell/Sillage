@@ -2669,6 +2669,47 @@ img {
   max-width: 22rem;
 }
 
+.monde-fail-detail {
+  margin: 0;
+  max-width: 22rem;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-faint);
+  word-break: break-word;
+  opacity: 0.9;
+}
+
+.monde-fail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 14px;
+}
+
+.monde-retry-btn {
+  appearance: none;
+  border: 1px solid var(--accent-bright, #c4a484);
+  background: var(--accent-soft, rgba(196, 164, 132, 0.16));
+  color: var(--cream, #f3ebe1);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.monde-retry-btn:active {
+  transform: translateY(1px);
+}
+
+.monde-globe[hidden] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .monde-page-boot {
   display: flex;
   align-items: center;
