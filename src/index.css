@@ -90,7 +90,9 @@ a,
 .photo-sheet-close,
 .photo-sheet-gallery,
 .photo-sheet-shutter,
-.pwa-install-btn {
+.pwa-install-btn,
+.sw-update-banner-apply,
+.sw-update-banner-dismiss {
   touch-action: manipulation;
 }
 
@@ -582,6 +584,76 @@ img {
   color: var(--text-faint);
   font-weight: 500;
   text-decoration: none;
+}
+
+/* SW update banner */
+.sw-update-wrap {
+  flex-shrink: 0;
+  padding: max(10px, env(safe-area-inset-top, 0px)) 18px 0;
+}
+
+.app-shell.has-update-banner .app-main {
+  padding-top: 14px;
+}
+
+.sw-update-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(40, 28, 28, 0.55);
+  border: 1px solid rgba(168, 72, 72, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.sw-update-banner strong {
+  color: var(--cream);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.05rem;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.sw-update-banner-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sw-update-banner-apply {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--cream);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 560;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.sw-update-banner-apply:hover {
+  background: var(--accent-bright);
+}
+
+.sw-update-banner-apply:focus-visible,
+.sw-update-banner-dismiss:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.sw-update-banner-dismiss {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 /* Day page */

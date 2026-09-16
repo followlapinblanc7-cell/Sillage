@@ -1,5 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { BottomNav } from './components/BottomNav';
+import { UpdateBanner } from './components/UpdateBanner';
+import { useServiceWorkerUpdate } from './hooks/useServiceWorkerUpdate';
 import { useJournal } from './hooks/useJournal';
 import { AlbumPage } from './pages/AlbumPage';
 import { ChercherPage } from './pages/ChercherPage';
@@ -14,9 +16,13 @@ function DayRoute({ journal }: { journal: ReturnType<typeof useJournal> }) {
 
 function AppRoutes() {
   const journal = useJournal();
+  const swUpdate = useServiceWorkerUpdate();
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${swUpdate.updateAvailable ? ' has-update-banner' : ''}`}>
+      {swUpdate.updateAvailable ? (
+        <UpdateBanner onUpdate={swUpdate.applyUpdate} onDismiss={swUpdate.dismiss} />
+      ) : null}
       <main className="app-main">
         <Routes>
           <Route path="/" element={<FilPage journal={journal} />} />

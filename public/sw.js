@@ -1,5 +1,5 @@
 /* Sillage — app-shell service worker (cache-first for same-origin assets) */
-const CACHE = 'sillage-shell-v5';
+const CACHE = 'sillage-shell-v6';
 const PRECACHE = [
   '/Sillage/',
   '/Sillage/index.html',
@@ -34,8 +34,19 @@ const PRECACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => {
+      // First install: take over now. Later updates wait for « Mettre à jour ».
+      if (!self.registration.active) {
+        return self.skipWaiting();
+      }
+    }),
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
