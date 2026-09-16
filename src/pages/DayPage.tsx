@@ -6,6 +6,7 @@ import {
   hasContent,
   type JournalApi,
 } from '../hooks/useJournal';
+import { reverseGeocode } from '../lib/geocode';
 import { CoffreUnlock } from '../components/CoffreUnlock';
 import { PhotoCaptureSheet } from '../components/PhotoCaptureSheet';
 
@@ -36,6 +37,15 @@ export function DayPage({ journal }: Props) {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [savePhase, setSavePhase] = useState<SavePhase>('idle');
+  const [geoSupported] = useState(
+    () => typeof navigator !== 'undefined' && 'geolocation' in navigator,
+  );
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const geoSessionRef = useRef<{
+    cancelled: boolean;
+    abort: AbortController;
+  } | null>(null);
 
   const skipFirstSave = useRef(true);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,6 +105,12 @@ export function DayPage({ journal }: Props) {
     return () => {
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
       if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
+      const session = geoSessionRef.current;
+      if (session) {
+        session.cancelled = true;
+        session.abort.abort();
+        geoSessionRef.current = null;
+      }
     };
   }, []);
 
@@ -193,6 +209,78 @@ export function DayPage({ journal }: Props) {
     if (auto) journal.updateDay(id, { title: auto });
   };
 
+  const cancelGeo = () => {
+    const session = geoSessionRef.current;
+    if (session) {
+      session.cancelled = true;
+      session.abort.abort();
+      geoSessionRef.current = null;
+    }
+    setGeoBusy(false);
+  };
+
+  const locateMe = () => {
+    setGeoError(null);
+    if (!('geolocation' in navigator)) {
+      setGeoError('Géolocalisation indisponible');
+      return;
+    }
+
+    cancelGeo();
+    const abort = new AbortController();
+    const session = { cancelled: false, abort };
+    geoSessionRef.current = session;
+    setGeoBusy(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void (async () => {
+          if (session.cancelled) return;
+          try {
+            const outcome = await reverseGeocode(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              abort.signal,
+            );
+            if (session.cancelled) return;
+            if (outcome.status === 'ok') {
+              journal.updateDay(id, { location: outcome.label });
+              setGeoError(null);
+            } else if (outcome.status === 'miss') {
+              setGeoError('Introuvable');
+            } else {
+              setGeoError('Pas de réseau');
+            }
+          } catch {
+            if (!session.cancelled) setGeoError('Pas de réseau');
+          } finally {
+            if (!session.cancelled) {
+              setGeoBusy(false);
+              if (geoSessionRef.current === session) geoSessionRef.current = null;
+            }
+          }
+        })();
+      },
+      (err) => {
+        if (session.cancelled) return;
+        setGeoBusy(false);
+        if (geoSessionRef.current === session) geoSessionRef.current = null;
+        if (err.code === err.PERMISSION_DENIED) {
+          setGeoError('Position refusée');
+        } else if (err.code === err.TIMEOUT) {
+          setGeoError('Introuvable');
+        } else {
+          setGeoError('Introuvable');
+        }
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 60_000,
+      },
+    );
+  };
+
   const needsCoffreUnlock =
     day.private && journal.hasCoffrePin && !journal.coffreUnlocked;
 
@@ -260,13 +348,46 @@ export function DayPage({ journal }: Props) {
       {metaOpen ? (
         <div className="meta-panel">
           <div className="field-label">Lieu</div>
-          <input
-            className="lieu-input"
-            type="text"
-            placeholder="Où étais-tu ?"
-            value={day.location}
-            onChange={(e) => journal.updateDay(id, { location: e.target.value })}
-          />
+          <div className="lieu-row">
+            <input
+              className="lieu-input"
+              type="text"
+              placeholder="Où étais-tu ?"
+              value={day.location}
+              onChange={(e) => journal.updateDay(id, { location: e.target.value })}
+              aria-label="Lieu"
+            />
+            {geoSupported ? (
+              geoBusy ? (
+                <button
+                  type="button"
+                  className="btn-ghost lieu-gps-btn"
+                  onClick={cancelGeo}
+                >
+                  Annuler
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-ghost lieu-gps-btn"
+                  onClick={locateMe}
+                  title="Remplir le lieu depuis la position de l’appareil"
+                >
+                  Ma position
+                </button>
+              )
+            ) : null}
+          </div>
+          {geoBusy ? (
+            <p className="muted lieu-gps-status" aria-live="polite">
+              Localisation…
+            </p>
+          ) : null}
+          {geoError && !geoBusy ? (
+            <p className="muted lieu-gps-status" role="alert">
+              {geoError}
+            </p>
+          ) : null}
 
           <div className="field-label">Humeur</div>
           <div className="mood-chips">

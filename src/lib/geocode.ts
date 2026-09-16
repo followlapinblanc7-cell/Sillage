@@ -1,4 +1,4 @@
-/** Nominatim geocoding with localStorage cache. Privacy: only geocode strings you pass. */
+/** Nominatim geocoding with localStorage cache. Privacy: only geocode strings / coords you pass. */
 
 export interface GeocodeHit {
   lat: number;
@@ -12,14 +12,35 @@ export type GeocodeOutcome =
   | { status: 'miss' }
   | { status: 'unavailable' };
 
+export type ReverseGeocodeOutcome =
+  | { status: 'ok'; label: string; hit: GeocodeHit }
+  | { status: 'miss' }
+  | { status: 'unavailable' };
+
 type CacheEntry =
   | { status: 'ok'; lat: number; lon: number; displayName?: string; at: number }
   | { status: 'miss'; at: number };
 
+interface NominatimAddress {
+  city?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  hamlet?: string;
+  suburb?: string;
+  neighbourhood?: string;
+  city_district?: string;
+  county?: string;
+  state?: string;
+  region?: string;
+  country?: string;
+}
+
 const CACHE_KEY = 'sillage-geocode-v1';
 const USER_AGENT =
   'Sillage/1.0 (personal journal PWA; local-only; github.com/followlapinblanc7-cell/Sillage)';
-const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_SEARCH = 'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_REVERSE = 'https://nominatim.openstreetmap.org/reverse';
 /** Nominatim usage policy: ≤1 req/s */
 const MIN_INTERVAL_MS = 1100;
 /** Re-try failed lookups after a week */
@@ -34,6 +55,52 @@ function normalizeQuery(raw: string): string {
 
 export function locationKey(raw: string): string {
   return normalizeQuery(raw).toLocaleLowerCase('fr');
+}
+
+/** Round coords for cache (~110 m) — journal places don’t need metre precision. */
+export function coordsCacheKey(lat: number, lon: number): string {
+  const rLat = Math.round(lat * 1e3) / 1e3;
+  const rLon = Math.round(lon * 1e3) / 1e3;
+  return `rev:${rLat.toFixed(3)},${rLon.toFixed(3)}`;
+}
+
+/**
+ * Short journal-friendly label: town + département/région (or country).
+ * Avoids the full Nominatim dump (street, postcode, etc.).
+ */
+export function formatJournalPlace(
+  address: NominatimAddress,
+  displayName?: string,
+): string {
+  const locality =
+    address.city ||
+    address.town ||
+    address.village ||
+    address.municipality ||
+    address.hamlet ||
+    address.suburb ||
+    address.city_district ||
+    address.neighbourhood;
+  // Prefer county (département in FR) over large région / state
+  const area = address.county || address.state || address.region;
+  const country = address.country;
+
+  if (locality && area) return `${locality}, ${area}`;
+  if (locality && country) return `${locality}, ${country}`;
+  if (locality) return locality;
+  if (area && country && area !== country) return `${area}, ${country}`;
+  if (area) return area;
+  if (country) return country;
+
+  if (displayName) {
+    const parts = displayName
+      .split(',')
+      .map((s) => s.trim())
+      .filter((p) => p && !/^\d+[a-z]?$/i.test(p));
+    if (parts.length >= 2) return `${parts[0]}, ${parts[1]}`;
+    if (parts.length === 1) return parts[0];
+  }
+  return '';
 }
 
 function readCache(): Record<string, CacheEntry> {
@@ -87,33 +154,51 @@ function storeMiss(key: string) {
   writeCache(cache);
 }
 
-async function waitForSlot() {
+async function waitForSlot(signal?: AbortSignal) {
   const now = Date.now();
   const wait = Math.max(0, MIN_INTERVAL_MS - (now - lastRequestAt));
   if (wait > 0) {
-    await new Promise((r) => setTimeout(r, wait));
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, wait);
+      const onAbort = () => {
+        clearTimeout(t);
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+      if (signal?.aborted) {
+        clearTimeout(t);
+        reject(new DOMException('Aborted', 'AbortError'));
+        return;
+      }
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
   }
   lastRequestAt = Date.now();
 }
 
-async function fetchNominatim(query: string): Promise<GeocodeHit | null> {
+function nominatimHeaders(): HeadersInit {
+  return {
+    Accept: 'application/json',
+    'Accept-Language': 'fr',
+    // Nominatim asks for a valid identifying User-Agent; browsers may override,
+    // but we still send it where allowed and identify as Sillage in comments/docs.
+  };
+}
+
+async function fetchNominatimSearch(query: string): Promise<GeocodeHit | null> {
   await waitForSlot();
-  const url = new URL(NOMINATIM);
+  const url = new URL(NOMINATIM_SEARCH);
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'json');
   url.searchParams.set('limit', '1');
   url.searchParams.set('addressdetails', '0');
 
   const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      'Accept-Language': 'fr',
-    },
-    // Nominatim asks for a valid identifying User-Agent; browsers may override,
-    // but we still send it where allowed and identify as Sillage in comments/docs.
+    headers: nominatimHeaders(),
   });
 
-  // Transient / rate-limit — do not cache as a lasting miss
   if (!res.ok) {
     throw new Error(`geocode http ${res.status}`);
   }
@@ -134,6 +219,57 @@ async function fetchNominatim(query: string): Promise<GeocodeHit | null> {
   };
 }
 
+async function fetchNominatimReverse(
+  lat: number,
+  lon: number,
+  signal?: AbortSignal,
+): Promise<{ hit: GeocodeHit; label: string } | null> {
+  await waitForSlot(signal);
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+  const url = new URL(NOMINATIM_REVERSE);
+  url.searchParams.set('lat', String(lat));
+  url.searchParams.set('lon', String(lon));
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('addressdetails', '1');
+  url.searchParams.set('zoom', '14');
+
+  const res = await fetch(url.toString(), {
+    headers: nominatimHeaders(),
+    signal,
+  });
+
+  if (!res.ok) {
+    throw new Error(`reverse geocode http ${res.status}`);
+  }
+
+  const data = (await res.json()) as {
+    error?: string;
+    lat?: string;
+    lon?: string;
+    display_name?: string;
+    address?: NominatimAddress;
+  };
+
+  if (data.error) return null;
+
+  const outLat = Number(data.lat);
+  const outLon = Number(data.lon);
+  if (!Number.isFinite(outLat) || !Number.isFinite(outLon)) return null;
+
+  const label = formatJournalPlace(data.address ?? {}, data.display_name);
+  if (!label) return null;
+
+  return {
+    hit: {
+      lat: outLat,
+      lon: outLon,
+      displayName: label,
+    },
+    label,
+  };
+}
+
 /**
  * Resolve a free-text place. Never throws.
  * - ok / miss are cached in localStorage
@@ -151,7 +287,7 @@ export function geocodeLocation(raw: string): Promise<GeocodeOutcome> {
     const again = fromCache(key);
     if (again !== undefined) return again;
     try {
-      const hit = await fetchNominatim(query);
+      const hit = await fetchNominatimSearch(query);
       if (hit) {
         storeOk(key, hit);
         return { status: 'ok', hit };
@@ -159,7 +295,64 @@ export function geocodeLocation(raw: string): Promise<GeocodeOutcome> {
       storeMiss(key);
       return { status: 'miss' };
     } catch {
-      // Offline, timeout, or HTTP error — leave uncached for a later pass
+      return { status: 'unavailable' };
+    }
+  });
+
+  chain = job.then(
+    () => undefined,
+    () => undefined,
+  );
+  return job;
+}
+
+/**
+ * Reverse-geocode lat/lon into a short place string for the journal.
+ * Cache keyed by rounded coords. Never throws (abort → unavailable).
+ * Also seeds the forward cache under the label so Lieux can reuse it.
+ */
+export function reverseGeocode(
+  lat: number,
+  lon: number,
+  signal?: AbortSignal,
+): Promise<ReverseGeocodeOutcome> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return Promise.resolve({ status: 'miss' });
+  }
+  const key = coordsCacheKey(lat, lon);
+
+  const cached = fromCache(key);
+  if (cached?.status === 'ok' && cached.hit.displayName) {
+    return Promise.resolve({
+      status: 'ok',
+      label: cached.hit.displayName,
+      hit: cached.hit,
+    });
+  }
+  if (cached?.status === 'miss') return Promise.resolve({ status: 'miss' });
+  // ok without label (legacy) — re-fetch
+
+  const job = chain.then(async (): Promise<ReverseGeocodeOutcome> => {
+    if (signal?.aborted) return { status: 'unavailable' };
+    const again = fromCache(key);
+    if (again?.status === 'ok' && again.hit.displayName) {
+      return { status: 'ok', label: again.hit.displayName, hit: again.hit };
+    }
+    if (again?.status === 'miss') return { status: 'miss' };
+    try {
+      const result = await fetchNominatimReverse(lat, lon, signal);
+      if (result) {
+        storeOk(key, result.hit);
+        // Seed forward lookup so Lieux map can place this label without a second trip
+        storeOk(locationKey(result.label), result.hit);
+        return { status: 'ok', label: result.label, hit: result.hit };
+      }
+      storeMiss(key);
+      return { status: 'miss' };
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        return { status: 'unavailable' };
+      }
       return { status: 'unavailable' };
     }
   });
