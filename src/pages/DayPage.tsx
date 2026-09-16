@@ -4,9 +4,11 @@ import { MOODS, addNormalizedTag, normalizeTags } from '../types';
 import {
   formatDateLong,
   hasContent,
+  sameDayPastYears,
   type JournalApi,
 } from '../hooks/useJournal';
 import { rememberPlace, reverseGeocode } from '../lib/geocode';
+import { CeJourLa } from '../components/CeJourLa';
 import { LieuField } from '../components/LieuField';
 import { CoffreUnlock } from '../components/CoffreUnlock';
 import { PhotoCaptureSheet } from '../components/PhotoCaptureSheet';
@@ -116,6 +118,11 @@ export function DayPage({ journal }: Props) {
   }, []);
 
   const tags = useMemo(() => normalizeTags(day.tags), [day.tags]);
+
+  const ceJourLaDays = useMemo(
+    () => sameDayPastYears(journal.visibleDays, id),
+    [journal.visibleDays, id],
+  );
 
   const metaSummary = useMemo(() => {
     const parts: string[] = [];
@@ -539,6 +546,8 @@ export function DayPage({ journal }: Props) {
           </div>
         ) : null}
       </section>
+
+      <CeJourLa days={ceJourLaDays} />
 
       <button type="button" className="btn-danger" onClick={handleDelete}>
         Effacer cette journée

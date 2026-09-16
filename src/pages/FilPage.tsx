@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { BrandHeader } from '../components/BrandHeader';
+import { CeJourLa } from '../components/CeJourLa';
 import { DayCard } from '../components/DayCard';
 import { SampleBanner } from '../components/SampleBanner';
 import { WeekStrip } from '../components/WeekStrip';
@@ -8,6 +9,7 @@ import {
   coverPhoto,
   formatDateShort,
   pickTraceDay,
+  sameDayPastYears,
   type JournalApi,
 } from '../hooks/useJournal';
 
@@ -48,6 +50,15 @@ export function FilPage({ journal }: Props) {
     contentDays.some((d) => d.id === today);
   const older = contentDays.filter((d) => d.id !== today);
 
+  const ceJourLaDays = useMemo(
+    () => sameDayPastYears(contentDays, today),
+    [contentDays, today],
+  );
+  const ceJourLaIds = useMemo(
+    () => new Set(ceJourLaDays.map((d) => d.id)),
+    [ceJourLaDays],
+  );
+
   const localHour = new Date().getHours();
   // Banner when reminder is on, evening hour reached, and nothing
   // visible as "written today" on Fil (empty or private-only).
@@ -61,7 +72,10 @@ export function FilPage({ journal }: Props) {
     if (contentDays.length === 0) return null;
     if (older.length === 0) return null;
     if (traceDismissedOn === today) return null;
-    return pickTraceDay(contentDays, today, {
+    // Keep distinct from « Ce jour-là » (same month-day across years).
+    const pool = contentDays.filter((d) => !ceJourLaIds.has(d.id));
+    if (pool.every((d) => d.id === today)) return null;
+    return pickTraceDay(pool, today, {
       storedDayId: traceDayId,
       storedShownOn: traceShownOn,
     });
@@ -72,6 +86,7 @@ export function FilPage({ journal }: Props) {
     traceDayId,
     traceShownOn,
     traceDismissedOn,
+    ceJourLaIds,
   ]);
 
   useEffect(() => {
@@ -79,9 +94,10 @@ export function FilPage({ journal }: Props) {
   }, [traceDay, ensureTraceDay]);
 
   const tracesList = useMemo(() => {
-    if (!traceDay) return older;
-    return older.filter((d) => d.id !== traceDay.id);
-  }, [older, traceDay]);
+    return older.filter(
+      (d) => d.id !== traceDay?.id && !ceJourLaIds.has(d.id),
+    );
+  }, [older, traceDay, ceJourLaIds]);
 
   if (contentDays.length === 0) {
     return (
@@ -162,7 +178,9 @@ export function FilPage({ journal }: Props) {
         </div>
       )}
 
-      {older.length > 0 ? (
+      <CeJourLa days={ceJourLaDays} />
+
+      {traceDay || tracesList.length > 0 ? (
         <section className="traces-section" aria-label="Traces">
           <div className="section-label">Traces</div>
           <p className="traces-sub">Des jours que tu as déjà gardés.</p>
