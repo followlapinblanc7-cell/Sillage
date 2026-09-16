@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { CoffreUnlock } from '../components/CoffreUnlock';
 import { DayCard } from '../components/DayCard';
@@ -14,6 +14,12 @@ interface Props {
 
 type Section = 'main' | 'epingles' | 'coffre' | 'reglages' | 'apropos';
 type PinFormMode = null | 'set' | 'change' | 'clear';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 
 const HOUR_OPTIONS = [20, 21, 22] as const;
 
@@ -332,6 +338,24 @@ function ReglagesSection({
 
   const reminderOn = journal.eveningReminder;
   const hour = journal.eveningHour;
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const onBip = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', onBip);
+    return () => window.removeEventListener('beforeinstallprompt', onBip);
+  }, []);
+
+  const handleInstallPwa = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    setInstallPrompt(null);
+  };
 
   const handleExportBackup = async () => {
     setError(null);
@@ -508,6 +532,26 @@ function ReglagesSection({
           </p>
         ) : null}
 
+        <div className="drawer-row">
+          <div className="left">
+            Sur l&apos;écran d&apos;accueil
+            <span>
+              {installPrompt
+                ? 'Ajouter Sillage comme application sur cet appareil'
+                : 'iOS — Partager → Sur l’écran d’accueil. Android — Menu du navigateur → Installer l’application'}
+            </span>
+          </div>
+          {installPrompt ? (
+            <button
+              type="button"
+              className="btn-ghost pwa-install-btn"
+              onClick={() => void handleInstallPwa()}
+              disabled={busy}
+            >
+              Installer Sillage
+            </button>
+          ) : null}
+        </div>
         <div className="drawer-row">
           <div className="left">
             Langue

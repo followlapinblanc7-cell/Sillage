@@ -1,0 +1,31 @@
+{
+  "name": "Sillage",
+  "short_name": "Sillage",
+  "description": "Journal intime, simple et discret",
+  "start_url": "/Sillage/",
+  "scope": "/Sillage/",
+  "display": "standalone",
+  "background_color": "#1a1210",
+  "theme_color": "#1a1210",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/Sillage/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Sillage/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Sillage/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

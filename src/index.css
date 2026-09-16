@@ -1128,3 +1128,12 @@ img {
   font-size: 0.85rem;
   box-shadow: none;
 }
+
+.pwa-install-btn {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  color: var(--accent-bright);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
