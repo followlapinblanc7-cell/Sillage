@@ -38,6 +38,8 @@ export interface JournalState {
   eveningDismissedOn?: string;
   /** True after user photos have been migrated into IndexedDB */
   photosInIdb?: boolean;
+  /** Soft PIN for Coffre UI gate — salt + PBKDF2 hash only; null/absent = no PIN */
+  coffrePin?: { salt: string; hash: string } | null;
 }
 
 export const MOODS: { id: MoodId; label: string; icon: string }[] = [

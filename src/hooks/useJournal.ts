@@ -16,6 +16,14 @@ import {
   materializePhotosForExport,
   stripPhotosForStorage,
 } from '../lib/photoStore';
+import {
+  generateSalt,
+  hashPin,
+  isCoffreUnlocked,
+  normalizePin,
+  setCoffreUnlocked as persistCoffreUnlocked,
+  verifyPin,
+} from '../lib/coffrePin';
 
 const STORAGE_KEY = 'sillage-journal-v1';
 
@@ -61,6 +69,7 @@ function loadState(): JournalState {
           eveningHour: clampEveningHour(parsed.eveningHour ?? 21),
           eveningDismissedOn: parsed.eveningDismissedOn,
           photosInIdb: parsed.photosInIdb,
+          coffrePin: parsed.coffrePin ?? null,
         };
       }
     }
@@ -242,6 +251,7 @@ async function prepareImportedState(
     eveningHour: clampEveningHour(next.eveningHour ?? 21),
     eveningDismissedOn: next.eveningDismissedOn,
     photosInIdb: true,
+    coffrePin: next.coffrePin ?? null,
   };
 }
 
@@ -272,6 +282,9 @@ function mergeHydratedPhotos(
 export function useJournal() {
   const [state, setState] = useState<JournalState>(() => loadState());
   const [photosReady, setPhotosReady] = useState(false);
+  const [coffreUnlocked, setCoffreUnlockedState] = useState(() =>
+    isCoffreUnlocked(),
+  );
   const objectUrlsRef = useRef<Map<string, string>>(new Map());
   const skipSaveRef = useRef(true);
   const hydrateGenRef = useRef(0);
@@ -556,6 +569,95 @@ export function useJournal() {
     setState(prepared);
   }, []);
 
+  const hasCoffrePin = !!(state.coffrePin?.salt && state.coffrePin?.hash);
+
+  const setCoffrePin = useCallback(async (pin: string) => {
+    const normalized = normalizePin(pin);
+    if (normalized.length < 4 || normalized.length > 6) {
+      throw new Error('4 à 6 chiffres');
+    }
+    const salt = generateSalt();
+    const hash = await hashPin(normalized, salt);
+    setState((prev) => ({
+      ...prev,
+      coffrePin: { salt, hash },
+    }));
+    persistCoffreUnlocked(true);
+    setCoffreUnlockedState(true);
+  }, []);
+
+  const changeCoffrePin = useCallback(
+    async (current: string, next: string) => {
+      const stored = state.coffrePin;
+      if (!stored?.salt || !stored?.hash) {
+        throw new Error('Aucun code défini.');
+      }
+      const cur = normalizePin(current);
+      const nxt = normalizePin(next);
+      if (nxt.length < 4 || nxt.length > 6) {
+        throw new Error('4 à 6 chiffres');
+      }
+      const ok = await verifyPin(cur, stored);
+      if (!ok) {
+        throw new Error('Code incorrect.');
+      }
+      const salt = generateSalt();
+      const hash = await hashPin(nxt, salt);
+      setState((prev) => ({
+        ...prev,
+        coffrePin: { salt, hash },
+      }));
+      persistCoffreUnlocked(true);
+      setCoffreUnlockedState(true);
+    },
+    [state.coffrePin],
+  );
+
+  const clearCoffrePin = useCallback(
+    async (current: string) => {
+      const stored = state.coffrePin;
+      if (!stored?.salt || !stored?.hash) {
+        setState((prev) => ({ ...prev, coffrePin: null }));
+        persistCoffreUnlocked(false);
+        setCoffreUnlockedState(false);
+        return;
+      }
+      const cur = normalizePin(current);
+      const ok = await verifyPin(cur, stored);
+      if (!ok) {
+        throw new Error('Code incorrect.');
+      }
+      setState((prev) => ({ ...prev, coffrePin: null }));
+      persistCoffreUnlocked(false);
+      setCoffreUnlockedState(false);
+    },
+    [state.coffrePin],
+  );
+
+  const unlockCoffre = useCallback(
+    async (pin: string): Promise<boolean> => {
+      const stored = state.coffrePin;
+      if (!stored?.salt || !stored?.hash) {
+        persistCoffreUnlocked(true);
+        setCoffreUnlockedState(true);
+        return true;
+      }
+      const normalized = normalizePin(pin);
+      const ok = await verifyPin(normalized, stored);
+      if (ok) {
+        persistCoffreUnlocked(true);
+        setCoffreUnlockedState(true);
+      }
+      return ok;
+    },
+    [state.coffrePin],
+  );
+
+  const lockCoffre = useCallback(() => {
+    persistCoffreUnlocked(false);
+    setCoffreUnlockedState(false);
+  }, []);
+
   const eveningReminder = state.eveningReminder ?? false;
   const eveningHour = clampEveningHour(state.eveningHour ?? 21);
   const eveningDismissedOn = state.eveningDismissedOn;
@@ -591,6 +693,13 @@ export function useJournal() {
     dismissEveningReminder,
     exportBackup,
     importBackup,
+    hasCoffrePin,
+    coffreUnlocked,
+    setCoffrePin,
+    changeCoffrePin,
+    clearCoffrePin,
+    unlockCoffre,
+    lockCoffre,
   };
 }
 

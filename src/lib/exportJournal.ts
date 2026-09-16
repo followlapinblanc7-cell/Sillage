@@ -100,6 +100,7 @@ export async function parseBackupFile(file: File): Promise<JournalState> {
     eveningHour:
       typeof parsed.eveningHour === 'number' ? parsed.eveningHour : 21,
     eveningDismissedOn: parsed.eveningDismissedOn,
+    coffrePin: parsed.coffrePin ?? null,
   };
 }
 

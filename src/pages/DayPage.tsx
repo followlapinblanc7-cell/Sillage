@@ -6,6 +6,7 @@ import {
   hasContent,
   type JournalApi,
 } from '../hooks/useJournal';
+import { CoffreUnlock } from '../components/CoffreUnlock';
 import { PhotoCaptureSheet } from '../components/PhotoCaptureSheet';
 
 interface Props {
@@ -159,6 +160,18 @@ export function DayPage({ journal }: Props) {
     const auto = titleFromStory(day.story);
     if (auto) journal.updateDay(id, { title: auto });
   };
+
+  const needsCoffreUnlock =
+    day.private && journal.hasCoffrePin && !journal.coffreUnlocked;
+
+  if (needsCoffreUnlock) {
+    return (
+      <CoffreUnlock
+        onUnlock={journal.unlockCoffre}
+        onBack={() => navigate(backTo)}
+      />
+    );
+  }
 
   return (
     <div>
