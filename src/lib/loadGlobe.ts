@@ -19,6 +19,7 @@ export interface GlobeInstance {
   globeImageUrl: (url: string | null) => GlobeInstance;
   bumpImageUrl: (url: string | null) => GlobeInstance;
   backgroundColor: (color: string) => GlobeInstance;
+  backgroundImageUrl: (url: string | null) => GlobeInstance;
   showAtmosphere: (show: boolean) => GlobeInstance;
   atmosphereColor: (color: string) => GlobeInstance;
   atmosphereAltitude: (alt: number) => GlobeInstance;

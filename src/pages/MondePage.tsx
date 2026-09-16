@@ -12,10 +12,6 @@ import {
   type GeocodeOutcome,
 } from '../lib/geocode';
 import {
-  continentOf,
-  loadContinents,
-} from '../lib/continents';
-import {
   isWebGLAvailable,
   loadGlobe,
   type GlobeInstance,
@@ -23,13 +19,9 @@ import {
 import {
   GLOBE_ATMOSPHERE,
   GLOBE_BG,
-  GLOBE_CONTINENT_CAP,
-  GLOBE_CONTINENT_FALLBACK,
-  GLOBE_CONTINENT_SIDE,
-  GLOBE_CONTINENT_STROKE,
   GLOBE_PIN,
-  oceanGlobeImageUrl,
-  type ThemeId,
+  GLOBE_STARFIELD_URL,
+  nightGlobeImageUrl,
 } from '../lib/theme';
 import type { DayEntry } from '../types';
 
@@ -49,16 +41,6 @@ type PlacePhase = 'idle' | 'picking' | 'confirm';
 const VIEW_KEY = 'sillage-monde-globe-view-v1';
 const DEFAULT_POV = { lat: 20, lng: 8, altitude: 2.35 };
 const PENDING_ID = '__pending__';
-
-
-function applyContinentStyle(globe: GlobeInstance, theme: ThemeId) {
-  const caps = GLOBE_CONTINENT_CAP[theme];
-  const fallback = GLOBE_CONTINENT_FALLBACK[theme];
-  globe
-    .polygonCapColor((d) => caps[continentOf(d)] ?? fallback)
-    .polygonSideColor(() => GLOBE_CONTINENT_SIDE[theme])
-    .polygonStrokeColor(() => GLOBE_CONTINENT_STROKE[theme]);
-}
 
 
 interface GlobePoint {
@@ -339,15 +321,11 @@ export function MondePage({ journal }: Props) {
           },
         })
           .backgroundColor(GLOBE_BG[theme])
-          .globeImageUrl(oceanGlobeImageUrl(theme))
+          .backgroundImageUrl(GLOBE_STARFIELD_URL)
+          .globeImageUrl(nightGlobeImageUrl(theme))
           .showAtmosphere(true)
           .atmosphereColor(atm.color)
           .atmosphereAltitude(atm.altitude)
-          .polygonsTransitionDuration(0)
-          .polygonAltitude(0.004)
-          .polygonLabel(() => null)
-          .polygonGeoJsonGeometry('geometry')
-          .pointerEventsFilter((obj) => obj.__globeObjType !== 'polygon')
           .pointsMerge(false)
           .pointLat('lat')
           .pointLng('lng')
@@ -427,20 +405,12 @@ export function MondePage({ journal }: Props) {
         ).addEventListener?.('change', onControlsChange);
 
         globeRef.current = globe;
-        applyContinentStyle(globe, theme);
         applyPoints(globe);
         setGlobeReady(true);
         setGlobeError(false);
         setWebglMissing(false);
 
-        void loadContinents()
-          .then((features) => {
-            if (cancelled || globeRef.current !== globe) return;
-            globe.polygonsData(features);
-          })
-          .catch(() => {
-            /* ocean-only fallback — pins still work */
-          });
+        // Night lights texture only — no continent polygon fills (photo wins).
 
         resizeObs = new ResizeObserver(() => syncSize());
         resizeObs.observe(el);
@@ -496,17 +466,17 @@ export function MondePage({ journal }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Theme ocean / continent fills / atmosphere
+  // Theme: night Earth stays cinematic; only rim / space tint shifts slightly
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !globeReady) return;
     const atm = GLOBE_ATMOSPHERE[journal.theme];
     globe
       .backgroundColor(GLOBE_BG[journal.theme])
-      .globeImageUrl(oceanGlobeImageUrl(journal.theme))
+      .backgroundImageUrl(GLOBE_STARFIELD_URL)
+      .globeImageUrl(nightGlobeImageUrl(journal.theme))
       .atmosphereColor(atm.color)
       .atmosphereAltitude(atm.altitude);
-    applyContinentStyle(globe, journal.theme);
   }, [journal.theme, globeReady]);
 
   // Pause auto-rotate while placing or previewing
