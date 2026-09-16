@@ -1,7 +1,4 @@
-/** Load globe.gl (Three.js + WebGL) from CDN once — keeps the app bundle free of 3D deps. */
-
-const GLOBE_JS =
-  'https://cdn.jsdelivr.net/npm/globe.gl@2.46.2/dist/globe.gl.min.js';
+/** Lazy-load globe.gl (Three.js + WebGL) via Vite — same-origin chunk, no CDN. */
 
 export interface GlobeGeoCoords {
   lat: number;
@@ -105,17 +102,25 @@ export interface GlobeInstance {
   _destructor: () => void;
 }
 
-type GlobeConstructor = new (
+export type GlobeConstructor = new (
   element: HTMLElement,
   configOptions?: { rendererConfig?: Record<string, unknown> },
 ) => GlobeInstance;
 
-declare global {
-  interface Window {
-    Globe?: GlobeConstructor;
+/** Why the Monde globe could not start. */
+export type GlobeFailReason = 'webgl' | 'network' | 'unknown';
+
+export class GlobeLoadError extends Error {
+  readonly reason: GlobeFailReason;
+
+  constructor(reason: GlobeFailReason, message: string) {
+    super(message);
+    this.name = 'GlobeLoadError';
+    this.reason = reason;
   }
 }
 
+let cached: GlobeConstructor | null = null;
 let loading: Promise<GlobeConstructor> | null = null;
 
 export function isWebGLAvailable(): boolean {
@@ -130,38 +135,42 @@ export function isWebGLAvailable(): boolean {
   }
 }
 
-function injectScript(): Promise<void> {
-  if (window.Globe) return Promise.resolve();
-  const existing = document.querySelector(`script[src="${GLOBE_JS}"]`);
-  if (existing) {
-    return new Promise((resolve, reject) => {
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () =>
-        reject(new Error('Globe indisponible')),
-      );
-    });
+function classifyImportError(err: unknown): GlobeFailReason {
+  if (!navigator.onLine) return 'network';
+  const msg =
+    err instanceof Error
+      ? `${err.name} ${err.message}`
+      : typeof err === 'string'
+        ? err
+        : '';
+  if (/fetch|network|load failed|failed to fetch|dynamically imported module/i.test(msg)) {
+    return 'network';
   }
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = GLOBE_JS;
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Globe indisponible'));
-    document.head.appendChild(script);
-  });
+  return 'unknown';
 }
 
 export function loadGlobe(): Promise<GlobeConstructor> {
-  if (window.Globe) return Promise.resolve(window.Globe);
+  if (cached) return Promise.resolve(cached);
   if (loading) return loading;
   loading = (async () => {
     if (!isWebGLAvailable()) {
-      throw new Error('WebGL indisponible');
+      throw new GlobeLoadError('webgl', 'WebGL indisponible');
     }
-    await injectScript();
-    if (!window.Globe) throw new Error('Globe indisponible');
-    return window.Globe;
+    let Globe: GlobeConstructor;
+    try {
+      const mod = await import('globe.gl');
+      Globe = mod.default as unknown as GlobeConstructor;
+    } catch (err) {
+      throw new GlobeLoadError(
+        classifyImportError(err),
+        'Globe indisponible',
+      );
+    }
+    if (!Globe) {
+      throw new GlobeLoadError('unknown', 'Globe indisponible');
+    }
+    cached = Globe;
+    return Globe;
   })().catch((err) => {
     loading = null;
     throw err;

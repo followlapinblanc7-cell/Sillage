@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { BottomNav } from './components/BottomNav';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -8,12 +9,31 @@ import { ChercherPage } from './pages/ChercherPage';
 import { DayPage } from './pages/DayPage';
 import { FilPage } from './pages/FilPage';
 import { LieuxPage } from './pages/LieuxPage';
-import { MondePage } from './pages/MondePage';
 import { TiroirPage } from './pages/TiroirPage';
+
+const MondePage = lazy(() =>
+  import('./pages/MondePage').then((m) => ({ default: m.MondePage })),
+);
 
 function DayRoute({ journal }: { journal: ReturnType<typeof useJournal> }) {
   const { id } = useParams();
   return <DayPage key={id} journal={journal} />;
+}
+
+function MondeRoute({ journal }: { journal: ReturnType<typeof useJournal> }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="monde-page monde-page-boot" aria-busy="true">
+          <p className="monde-boot-msg" role="status">
+            Le globe s’éveille…
+          </p>
+        </div>
+      }
+    >
+      <MondePage journal={journal} />
+    </Suspense>
+  );
 }
 
 function AppRoutes() {
@@ -32,7 +52,7 @@ function AppRoutes() {
           <Route path="/chercher" element={<ChercherPage journal={journal} />} />
           <Route path="/tiroir" element={<TiroirPage journal={journal} />} />
           <Route path="/lieux" element={<LieuxPage journal={journal} />} />
-          <Route path="/monde" element={<MondePage journal={journal} />} />
+          <Route path="/monde" element={<MondeRoute journal={journal} />} />
           <Route path="/jour/:id" element={<DayRoute journal={journal} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
