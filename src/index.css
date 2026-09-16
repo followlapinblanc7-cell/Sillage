@@ -891,8 +891,16 @@ img {
   letter-spacing: 0.04em;
 }
 
+.lieu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .lieu-input {
   width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -902,6 +910,18 @@ img {
 
 .lieu-input:focus {
   border-color: rgba(168, 72, 72, 0.5);
+}
+
+.lieu-gps-btn {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.lieu-gps-status {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
 }
 
 .mood-chips {
