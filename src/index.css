@@ -73,6 +73,7 @@ button,
 a,
 .nav-item,
 .mood-chip,
+.tag-chip,
 .hour-chip,
 .toggle,
 .btn-primary,
@@ -818,6 +819,89 @@ img {
   background: var(--accent-soft);
   border-color: rgba(168, 72, 72, 0.55);
   color: var(--cream);
+}
+
+.tag-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.tag-chip:focus-visible {
+  outline: 2px solid rgba(168, 72, 72, 0.55);
+  outline-offset: 2px;
+}
+
+.tag-chip.filter.active,
+.tag-chip.active {
+  border-color: rgba(168, 72, 72, 0.45);
+  background: var(--accent-soft);
+  color: var(--cream);
+}
+
+.tag-chip.plain {
+  pointer-events: none;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  border-color: var(--border);
+  background: transparent;
+}
+
+.tag-input {
+  min-width: 7rem;
+  flex: 1 1 7rem;
+  max-width: 14rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 6px 2px;
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.tag-input:focus {
+  border-bottom-color: rgba(168, 72, 72, 0.5);
+}
+
+.tag-input::placeholder {
+  color: var(--text-faint);
+}
+
+.tag-hint {
+  margin: 8px 0 0;
+  font-size: 0.72rem;
+}
+
+.tag-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.search-result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .photos-grid {

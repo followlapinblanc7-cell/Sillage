@@ -20,10 +20,39 @@ export interface DayEntry {
   story: string;
   mood: MoodId | null;
   location: string;
+  /** Free-form labels; preserve casing, case-insensitive unique */
+  tags: string[];
   photos: Photo[];
   private: boolean;
   pinned: boolean; // day pinned
   updatedAt: string;
+}
+
+/** Trim, collapse spaces, drop empties; keep first casing; case-insensitive dedupe. */
+export function normalizeTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const t = item.trim().replace(/\s+/g, ' ');
+    if (!t) continue;
+    const key = t.toLocaleLowerCase('fr');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
+
+/** Merge a candidate tag into an existing list (case-insensitive). */
+export function addNormalizedTag(tags: string[], candidate: string): string[] {
+  const next = normalizeTags([candidate]);
+  if (!next.length) return normalizeTags(tags);
+  const base = normalizeTags(tags);
+  const key = next[0].toLocaleLowerCase('fr');
+  if (base.some((t) => t.toLocaleLowerCase('fr') === key)) return base;
+  return [...base, next[0]];
 }
 
 export interface JournalState {

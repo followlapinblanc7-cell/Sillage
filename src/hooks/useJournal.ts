@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DayEntry, JournalState, MoodId, Photo } from '../types';
+import { normalizeTags } from '../types';
 import { SAMPLE_DAYS } from '../data/sampleData';
 import { downloadBackup } from '../lib/exportJournal';
 import {
@@ -50,11 +51,25 @@ function emptyDay(id: string): DayEntry {
     story: '',
     mood: null,
     location: '',
+    tags: [],
     photos: [],
     private: false,
     pinned: false,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/** Ensure tags exist and are normalized (old entries / imports). */
+function migrateDay(day: DayEntry): DayEntry {
+  return { ...day, tags: normalizeTags(day.tags) };
+}
+
+function migrateDays(days: Record<string, DayEntry>): Record<string, DayEntry> {
+  const next: Record<string, DayEntry> = {};
+  for (const [id, day] of Object.entries(days)) {
+    next[id] = migrateDay(day);
+  }
+  return next;
 }
 
 function loadState(): JournalState {
@@ -65,6 +80,7 @@ function loadState(): JournalState {
       if (parsed && parsed.version === 1 && parsed.days) {
         return {
           ...parsed,
+          days: migrateDays(parsed.days),
           eveningReminder: parsed.eveningReminder ?? false,
           eveningHour: clampEveningHour(parsed.eveningHour ?? 21),
           eveningDismissedOn: parsed.eveningDismissedOn,
@@ -191,7 +207,7 @@ async function hydrateAndMigrate(
         photos.push({ ...p, url: '' });
       }
     }
-    days[dayId] = { ...day, photos };
+    days[dayId] = migrateDay({ ...day, photos });
   }
 
   return { ...state, days, photosInIdb: true };
@@ -246,7 +262,7 @@ async function prepareImportedState(
 
   return {
     ...next,
-    days,
+    days: migrateDays(days),
     eveningReminder: next.eveningReminder ?? false,
     eveningHour: clampEveningHour(next.eveningHour ?? 21),
     eveningDismissedOn: next.eveningDismissedOn,
@@ -510,13 +526,21 @@ export function useJournal() {
   }, []);
 
   const search = useCallback(
-    (q: string, moodFilter?: MoodId | null) => {
+    (q: string, moodFilter?: MoodId | null, tagFilter?: string | null) => {
       const query = q.trim().toLowerCase();
+      const tagKey = (tagFilter ?? '').trim().toLocaleLowerCase('fr');
       return allDays.filter((d) => {
         if (!hasContent(d) || d.private) return false;
         if (moodFilter && d.mood !== moodFilter) return false;
-        if (!query) return !!moodFilter;
-        const hay = [d.title, d.story, d.location, d.mood ?? '']
+        const tags = d.tags ?? [];
+        if (
+          tagKey &&
+          !tags.some((t) => t.toLocaleLowerCase('fr') === tagKey)
+        ) {
+          return false;
+        }
+        if (!query) return !!moodFilter || !!tagKey;
+        const hay = [d.title, d.story, d.location, d.mood ?? '', ...tags]
           .join(' ')
           .toLowerCase();
         return hay.includes(query);
@@ -532,6 +556,21 @@ export function useJournal() {
       if (d.mood && hasContent(d)) set.add(d.mood);
     }
     return Array.from(set);
+  }, [allDays]);
+
+  /** Known tags from non-private days only — never leak coffre. */
+  const tagsInData = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const d of allDays) {
+      if (d.private || !hasContent(d)) continue;
+      for (const t of d.tags ?? []) {
+        const key = t.toLocaleLowerCase('fr');
+        if (!map.has(key)) map.set(key, t);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.localeCompare(b, 'fr', { sensitivity: 'base' }),
+    );
   }, [allDays]);
 
   const pinnedPhotos = useMemo(() => {
@@ -680,6 +719,7 @@ export function useJournal() {
     setMood,
     search,
     moodsInData,
+    tagsInData,
     pinnedPhotos,
     pinnedDays,
     privateDays,
@@ -709,6 +749,7 @@ export function hasContent(d: DayEntry): boolean {
     d.story.trim() ||
     d.mood ||
     d.location.trim() ||
+    (d.tags && d.tags.length) ||
     d.photos.length
   );
 }

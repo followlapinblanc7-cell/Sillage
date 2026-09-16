@@ -1,5 +1,5 @@
 import type { DayEntry, JournalState } from '../types';
-import { moodLabel } from '../types';
+import { moodLabel, normalizeTags } from '../types';
 import { materializePhotosForExport } from './photoStore';
 
 export { materializePhotosForExport } from './photoStore';
@@ -10,6 +10,7 @@ function hasContent(d: DayEntry): boolean {
     d.story.trim() ||
     d.mood ||
     d.location.trim() ||
+    (d.tags && d.tags.length) ||
     d.photos.length
   );
 }
@@ -94,8 +95,13 @@ export async function parseBackupFile(file: File): Promise<JournalState> {
   if (!validateBackup(parsed)) {
     throw new Error('Ce fichier n’est pas une sauvegarde Sillage valide.');
   }
+  const days: Record<string, DayEntry> = {};
+  for (const [id, day] of Object.entries(parsed.days)) {
+    days[id] = { ...day, tags: normalizeTags(day.tags) };
+  }
   return {
     ...parsed,
+    days,
     eveningReminder: parsed.eveningReminder ?? false,
     eveningHour:
       typeof parsed.eveningHour === 'number' ? parsed.eveningHour : 21,
@@ -109,6 +115,8 @@ function metaLine(day: DayEntry): string {
   const mood = moodLabel(day.mood);
   if (mood) parts.push(mood);
   if (day.location.trim()) parts.push(day.location.trim());
+  const tags = normalizeTags(day.tags);
+  if (tags.length) parts.push(tags.join(', '));
   return parts.join(' · ');
 }
 

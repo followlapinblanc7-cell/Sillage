@@ -11,6 +11,7 @@ export const SAMPLE_DAYS: DayEntry[] = [
       "Matinée tardive. Un café près de la fenêtre, la lumière douce sur le parquet. Rien d'urgent — juste le silence du dimanche et l'odeur du torréfié. J'ai relu deux pages d'un livre commencé la semaine dernière, sans avancer vraiment. Ce n'est pas grave.",
     mood: 'calme',
     location: 'Saint-Étienne, Loire',
+    tags: ['dimanche', 'maison'],
     photos: [
       {
         id: 'p13-1',
@@ -29,6 +30,7 @@ export const SAMPLE_DAYS: DayEntry[] = [
       "Trois cours d'affilée. La voix un peu rauque dès midi. Un élève qui d'habitude décroche a levé la main — une question juste, posée calmement. Ça a changé le ton de l'après-midi. Le stylo a glissé sur le cahier jusqu'à la dernière heure.",
     mood: 'las',
     location: 'Saint-Étienne',
+    tags: ['école'],
     photos: [
       {
         id: 'p14-1',
@@ -47,6 +49,7 @@ export const SAMPLE_DAYS: DayEntry[] = [
       "Lina est restée après le cours. Fractions — elle bloquait depuis des semaines. On a repris lentement, avec des pommes découpées sur le bureau. Et puis ça a cliqué. Son visage s'est ouvert. Sur le chemin du retour, j'étais plus légère.\n\n« Ce n'est pas un grand jour. C'est un vrai. »",
     mood: 'joyeux',
     location: 'Saint-Étienne',
+    tags: ['école', 'Lina'],
     photos: [
       {
         id: 'p15-1',
