@@ -1,7 +1,7 @@
 {
   "name": "Sillage",
   "short_name": "Sillage",
-  "description": "Journal intime, simple et discret",
+  "description": "Garde une trace de chaque jour — simple et discret",
   "start_url": "/Sillage/",
   "scope": "/Sillage/",
   "display": "standalone",
