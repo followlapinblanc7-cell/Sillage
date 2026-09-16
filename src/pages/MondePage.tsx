@@ -13,8 +13,9 @@ import {
 } from '../lib/geocode';
 import {
   continentOf,
-  loadContinents,
-} from '../lib/continents';
+  countryPaletteIndex,
+  loadCountries,
+} from '../lib/countries';
 import {
   isWebGLAvailable,
   loadGlobe,
@@ -23,14 +24,13 @@ import {
 import {
   GLOBE_ATMOSPHERE,
   GLOBE_BG,
-  GLOBE_CONTINENT_CAP,
-  GLOBE_CONTINENT_FALLBACK,
-  GLOBE_CONTINENT_SIDE,
-  GLOBE_CONTINENT_STROKE,
-  GLOBE_NIGHT_EMISSIVE,
+  GLOBE_COUNTRY_FALLBACK,
+  GLOBE_COUNTRY_PALETTE,
+  GLOBE_COUNTRY_SIDE,
+  GLOBE_COUNTRY_STROKE,
+  GLOBE_GRATICULE,
   GLOBE_PIN,
-  GLOBE_STARFIELD_URL,
-  nightGlobeImageUrl,
+  oceanGlobeImageUrl,
   type ThemeId,
 } from '../lib/theme';
 import type { DayEntry } from '../types';
@@ -52,34 +52,71 @@ const VIEW_KEY = 'sillage-monde-globe-view-v1';
 const DEFAULT_POV = { lat: 20, lng: 8, altitude: 2.35 };
 const PENDING_ID = '__pending__';
 
-function applyContinentStyle(globe: GlobeInstance, theme: ThemeId) {
-  const caps = GLOBE_CONTINENT_CAP[theme];
-  const fallback = GLOBE_CONTINENT_FALLBACK[theme];
-  globe
-    .polygonCapColor((d) => caps[continentOf(d)] ?? fallback)
-    .polygonSideColor(() => GLOBE_CONTINENT_SIDE[theme])
-    .polygonStrokeColor(() => GLOBE_CONTINENT_STROKE[theme]);
+function countryCapColor(d: unknown, theme: ThemeId): string {
+  if (continentOf(d) === 'Antarctica') {
+    return GLOBE_COUNTRY_FALLBACK[theme];
+  }
+  const palette = GLOBE_COUNTRY_PALETTE[theme];
+  return palette[countryPaletteIndex(d, palette.length)] ?? GLOBE_COUNTRY_FALLBACK[theme];
 }
 
-/** Lift city lights / lit land via emissiveMap; near-black oceans stay dark. */
-function enhanceNightMaterial(globe: GlobeInstance) {
+function applyCountryStyle(globe: GlobeInstance, theme: ThemeId) {
+  globe
+    .polygonCapColor((d) => countryCapColor(d, theme))
+    .polygonSideColor(() => GLOBE_COUNTRY_SIDE[theme])
+    .polygonStrokeColor(() => GLOBE_COUNTRY_STROKE[theme]);
+}
+
+/** Idle night-emissive path: solid ocean plate, no city-lights glow. */
+function clearNightEmissive(globe: GlobeInstance) {
   const mat = globe.globeMaterial?.();
   if (!mat) return;
   const apply = () => {
-    if (!mat.map) return false;
-    mat.emissiveMap = mat.map;
-    mat.emissive?.set(GLOBE_NIGHT_EMISSIVE.color);
-    mat.emissiveIntensity = GLOBE_NIGHT_EMISSIVE.intensity;
+    mat.emissiveMap = undefined;
+    mat.emissive?.set('#000000');
+    mat.emissiveIntensity = 0;
     mat.color?.set('#ffffff');
     mat.needsUpdate = true;
-    return true;
+    return !!mat.map || true;
   };
-  if (apply()) return;
+  apply();
   let tries = 0;
   const id = window.setInterval(() => {
     tries += 1;
-    if (apply() || tries > 50) window.clearInterval(id);
+    if (apply() || tries > 40) window.clearInterval(id);
   }, 80);
+}
+
+type GraticulePath = { points: { lat: number; lng: number }[] };
+
+function buildGraticule(step = 30): GraticulePath[] {
+  const paths: GraticulePath[] = [];
+  for (let lat = -60; lat <= 60; lat += step) {
+    const points: { lat: number; lng: number }[] = [];
+    for (let lng = -180; lng <= 180; lng += 5) {
+      points.push({ lat, lng });
+    }
+    paths.push({ points });
+  }
+  for (let lng = -180; lng < 180; lng += step) {
+    const points: { lat: number; lng: number }[] = [];
+    for (let lat = -90; lat <= 90; lat += 5) {
+      points.push({ lat, lng });
+    }
+    paths.push({ points });
+  }
+  return paths;
+}
+
+function applyGraticule(globe: GlobeInstance, theme: ThemeId) {
+  const g = GLOBE_GRATICULE[theme];
+  globe
+    .pathsData(buildGraticule(30))
+    .pathPoints('points')
+    .pathPointAlt(0.0012)
+    .pathColor(() => g.color)
+    .pathStroke(g.stroke)
+    .pathsTransitionDuration(0);
 }
 
 interface GlobePoint {
@@ -360,8 +397,8 @@ export function MondePage({ journal }: Props) {
           },
         })
           .backgroundColor(GLOBE_BG[theme])
-          .backgroundImageUrl(GLOBE_STARFIELD_URL)
-          .globeImageUrl(nightGlobeImageUrl(theme))
+          .backgroundImageUrl(null)
+          .globeImageUrl(oceanGlobeImageUrl(theme))
           .showAtmosphere(true)
           .atmosphereColor(atm.color)
           .atmosphereAltitude(atm.altitude)
@@ -449,22 +486,23 @@ export function MondePage({ journal }: Props) {
         ).addEventListener?.('change', onControlsChange);
 
         globeRef.current = globe;
-        applyContinentStyle(globe, theme);
+        applyCountryStyle(globe, theme);
+        applyGraticule(globe, theme);
         applyPoints(globe);
-        enhanceNightMaterial(globe);
-        globe.onGlobeReady(() => enhanceNightMaterial(globe));
+        clearNightEmissive(globe);
+        globe.onGlobeReady(() => clearNightEmissive(globe));
         setGlobeReady(true);
         setGlobeError(false);
         setWebglMissing(false);
 
-        // Soft amber land washes over night lights (oceans stay dark).
-        void loadContinents()
+        // Drawn political countries over a solid ocean plate.
+        void loadCountries()
           .then((features) => {
             if (cancelled || globeRef.current !== globe) return;
             globe.polygonsData(features);
           })
           .catch(() => {
-            /* night texture alone — pins still work */
+            /* ocean alone — pins still work */
           });
 
         resizeObs = new ResizeObserver(() => syncSize());
@@ -521,19 +559,20 @@ export function MondePage({ journal }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Theme: night Earth stays cinematic; rim / land-wash / space tint shift slightly
+  // Theme: political atlas ocean / fills / rim shift with dark & light UI
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !globeReady) return;
     const atm = GLOBE_ATMOSPHERE[journal.theme];
     globe
       .backgroundColor(GLOBE_BG[journal.theme])
-      .backgroundImageUrl(GLOBE_STARFIELD_URL)
-      .globeImageUrl(nightGlobeImageUrl(journal.theme))
+      .backgroundImageUrl(null)
+      .globeImageUrl(oceanGlobeImageUrl(journal.theme))
       .atmosphereColor(atm.color)
       .atmosphereAltitude(atm.altitude);
-    applyContinentStyle(globe, journal.theme);
-    enhanceNightMaterial(globe);
+    applyCountryStyle(globe, journal.theme);
+    applyGraticule(globe, journal.theme);
+    clearNightEmissive(globe);
   }, [journal.theme, globeReady]);
 
   // Pause auto-rotate while placing or previewing

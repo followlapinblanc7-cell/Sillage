@@ -78,6 +78,19 @@ export interface GlobeInstance {
   pointerEventsFilter: (
     fn: (obj: GlobePointerObject, data?: unknown) => boolean,
   ) => GlobeInstance;
+  pathsData: (data: unknown[]) => GlobeInstance;
+  pathPoints: (
+    acc: string | ((d: unknown) => { lat: number; lng: number; altitude?: number }[]),
+  ) => GlobeInstance;
+  pathColor: (acc: string | ((d: unknown) => string)) => GlobeInstance;
+  pathStroke: (acc: number | string | ((d: unknown) => number)) => GlobeInstance;
+  pathAltitude: (
+    acc: number | string | ((d: unknown) => number),
+  ) => GlobeInstance;
+  pathPointAlt: (
+    acc: number | string | ((d: unknown) => number),
+  ) => GlobeInstance;
+  pathsTransitionDuration: (ms: number) => GlobeInstance;
   pointOfView: (
     pov?: { lat?: number; lng?: number; altitude?: number },
     transitionMs?: number,
