@@ -96,7 +96,7 @@ export interface GlobeInstance {
   pathPointAlt: (
     acc: number | string | ((d: unknown) => number),
   ) => GlobeInstance;
-  pathsTransitionDuration: (ms: number) => GlobeInstance;
+  pathTransitionDuration: (ms: number) => GlobeInstance;
   pointOfView: (
     pov?: { lat?: number; lng?: number; altitude?: number },
     transitionMs?: number,
