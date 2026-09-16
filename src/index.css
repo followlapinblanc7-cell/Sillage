@@ -323,6 +323,10 @@ img {
   margin-bottom: 12px;
 }
 
+.day-card:not(.featured) .day-card-thumb {
+  height: 96px;
+}
+
 /* Week strip */
 .week-block {
   margin: 8px 0 18px;
@@ -592,81 +596,96 @@ img {
   text-decoration: none;
 }
 
-/* Une trace — soft resurfacing of a past day */
-.trace-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  background: rgba(40, 28, 28, 0.45);
-  border: 1px solid rgba(168, 72, 72, 0.22);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-bottom: 18px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+/* Traces — past souvenirs dominate Fil after aujourd’hui */
+.traces-section {
+  margin-top: 4px;
+  margin-bottom: 8px;
 }
-.trace-card-main {
+.traces-sub {
+  margin: -6px 0 14px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* Hero trace — large, hard to miss */
+.trace-hero {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
+  flex-direction: column;
+  background: linear-gradient(165deg, #32221e 0%, #241814 100%);
+  border: 1px solid rgba(168, 72, 72, 0.4);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+}
+.trace-hero-main {
+  display: flex;
+  flex-direction: column;
   text-decoration: none;
   color: inherit;
-}
-.trace-card-thumb {
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 8px;
-  flex-shrink: 0;
-  border: 1px solid rgba(168, 72, 72, 0.2);
-}
-.trace-card-body {
   min-width: 0;
-  flex: 1;
 }
-.trace-card-eyebrow {
-  margin: 0 0 2px;
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
+.trace-hero-cover {
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 0;
+}
+.trace-hero-body {
+  padding: 16px 16px 8px;
+  min-width: 0;
+}
+.trace-hero-eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent-bright);
   font-weight: 560;
 }
-.trace-card-date {
-  margin: 0 0 4px;
-  font-size: 0.78rem;
+.trace-hero-date {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
   color: var(--text-faint);
 }
-.trace-card-title {
-  margin: 0 0 4px;
+.trace-hero-title {
+  margin: 0 0 8px;
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
-  font-size: 1.12rem;
+  font-size: 1.35rem;
   color: var(--cream);
   line-height: 1.25;
 }
-.trace-card-excerpt {
-  margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.4;
+.trace-hero-excerpt {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+  line-height: 1.45;
   color: var(--text-muted);
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.trace-card-dismiss {
-  flex-shrink: 0;
+.trace-hero-line {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-faint);
+  font-style: italic;
+}
+.trace-hero-dismiss {
+  align-self: flex-end;
   color: var(--text-faint);
   font-size: 0.8rem;
   font-weight: 500;
-  padding-top: 2px;
+  padding: 8px 16px 14px;
 }
-.trace-card-dismiss:hover {
+.trace-hero-dismiss:hover {
   color: var(--accent-bright);
 }
 
