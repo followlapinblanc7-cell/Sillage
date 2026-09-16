@@ -8,6 +8,7 @@ import {
   downloadReadableExport,
   parseBackupFile,
 } from '../lib/exportJournal';
+import type { ThemeId } from '../lib/theme';
 
 interface Props {
   journal: JournalApi;
@@ -508,6 +509,32 @@ function ReglagesSection({
           </div>
         ) : null}
 
+        <div className="drawer-row evening-hour-row">
+          <div className="left">
+            Apparence
+            <span>Thème de l&apos;interface</span>
+          </div>
+          <div className="hour-chips" role="group" aria-label="Apparence">
+            {(
+              [
+                { id: 'dark' as ThemeId, label: 'Sombre' },
+                { id: 'light' as ThemeId, label: 'Clair' },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`hour-chip${journal.theme === opt.id ? ' active' : ''}`}
+                onClick={() => journal.setTheme(opt.id)}
+                disabled={busy}
+                aria-pressed={journal.theme === opt.id}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <CoffrePinSettings journal={journal} />
 
         <button
@@ -731,7 +758,7 @@ export function TiroirPage({ journal }: Props) {
           <button type="button" className="drawer-row" onClick={() => setSection('reglages')}>
             <div className="left">
               Réglages
-              <span>Données, exemples, à propos</span>
+              <span>Apparence, données, à propos</span>
             </div>
             <span className="chev">›</span>
           </button>

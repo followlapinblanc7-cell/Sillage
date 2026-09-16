@@ -25,6 +25,7 @@ import {
   setCoffreUnlocked as persistCoffreUnlocked,
   verifyPin,
 } from '../lib/coffrePin';
+import { applyTheme, normalizeTheme, type ThemeId } from '../lib/theme';
 
 const STORAGE_KEY = 'sillage-journal-v1';
 
@@ -86,6 +87,7 @@ function loadState(): JournalState {
           eveningDismissedOn: parsed.eveningDismissedOn,
           photosInIdb: parsed.photosInIdb,
           coffrePin: parsed.coffrePin ?? null,
+          theme: normalizeTheme(parsed.theme),
           traceDayId: parsed.traceDayId,
           traceShownOn: parsed.traceShownOn,
           traceDismissedOn: parsed.traceDismissedOn,
@@ -104,6 +106,7 @@ function loadState(): JournalState {
     eveningReminder: false,
     eveningHour: 21,
     photosInIdb: true,
+    theme: 'dark',
   };
 }
 
@@ -271,6 +274,7 @@ async function prepareImportedState(
     eveningDismissedOn: next.eveningDismissedOn,
     photosInIdb: true,
     coffrePin: next.coffrePin ?? null,
+    theme: normalizeTheme(next.theme),
     traceDayId: next.traceDayId,
     traceShownOn: next.traceShownOn,
     traceDismissedOn: next.traceDismissedOn,
@@ -310,6 +314,11 @@ export function useJournal() {
   const objectUrlsRef = useRef<Map<string, string>>(new Map());
   const skipSaveRef = useRef(true);
   const hydrateGenRef = useRef(0);
+
+  // Keep html[data-theme] + theme-color in sync with preference
+  useEffect(() => {
+    applyTheme(normalizeTheme(state.theme));
+  }, [state.theme]);
 
   // Hydrate / migrate on mount (from initial LS snapshot; data URLs still display until done)
   useEffect(() => {
@@ -521,6 +530,15 @@ export function useJournal() {
     setState((prev) => ({
       ...prev,
       eveningHour: clampEveningHour(hour),
+    }));
+  }, []);
+
+  const setTheme = useCallback((theme: ThemeId) => {
+    const next = normalizeTheme(theme);
+    applyTheme(next);
+    setState((prev) => ({
+      ...prev,
+      theme: next,
     }));
   }, []);
 
@@ -761,6 +779,8 @@ export function useJournal() {
     eveningDismissedOn,
     setEveningReminder,
     setEveningHour,
+    theme: normalizeTheme(state.theme),
+    setTheme,
     dismissEveningReminder,
     traceDayId: state.traceDayId,
     traceShownOn: state.traceShownOn,

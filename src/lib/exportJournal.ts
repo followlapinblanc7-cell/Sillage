@@ -1,6 +1,7 @@
 import type { DayEntry, JournalState } from '../types';
 import { moodLabel, normalizeTags } from '../types';
 import { materializePhotosForExport } from './photoStore';
+import { normalizeTheme } from './theme';
 
 export { materializePhotosForExport } from './photoStore';
 
@@ -107,6 +108,7 @@ export async function parseBackupFile(file: File): Promise<JournalState> {
       typeof parsed.eveningHour === 'number' ? parsed.eveningHour : 21,
     eveningDismissedOn: parsed.eveningDismissedOn,
     coffrePin: parsed.coffrePin ?? null,
+    theme: normalizeTheme(parsed.theme),
   };
 }
 
