@@ -1,5 +1,5 @@
 /* Sillage — app-shell service worker (cache-first for same-origin assets) */
-const CACHE = 'sillage-shell-v18';
+const CACHE = 'sillage-shell-v19';
 const PRECACHE = [
   '/Sillage/',
   '/Sillage/index.html',
@@ -75,6 +75,7 @@ function isAppShellRequest(url) {
     path.endsWith('.woff') ||
     path.endsWith('.ttf') ||
     path.endsWith('.webmanifest') ||
+    path.endsWith('.geojson') ||
     path.endsWith('.ico') ||
     path === '/Sillage/' ||
     path.endsWith('/index.html')
