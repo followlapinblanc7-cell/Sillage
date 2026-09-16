@@ -7,6 +7,7 @@ import { AlbumPage } from './pages/AlbumPage';
 import { ChercherPage } from './pages/ChercherPage';
 import { DayPage } from './pages/DayPage';
 import { FilPage } from './pages/FilPage';
+import { LieuxPage } from './pages/LieuxPage';
 import { TiroirPage } from './pages/TiroirPage';
 
 function DayRoute({ journal }: { journal: ReturnType<typeof useJournal> }) {
@@ -29,6 +30,7 @@ function AppRoutes() {
           <Route path="/album" element={<AlbumPage journal={journal} />} />
           <Route path="/chercher" element={<ChercherPage journal={journal} />} />
           <Route path="/tiroir" element={<TiroirPage journal={journal} />} />
+          <Route path="/lieux" element={<LieuxPage journal={journal} />} />
           <Route path="/jour/:id" element={<DayRoute journal={journal} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -713,6 +713,13 @@ export function TiroirPage({ journal }: Props) {
             </div>
             <span className="chev">›</span>
           </button>
+          <Link to="/lieux" className="drawer-row">
+            <div className="left">
+              Lieux
+              <span>Carte des endroits notés</span>
+            </div>
+            <span className="chev">›</span>
+          </Link>
           <button type="button" className="drawer-row" onClick={() => setSection('coffre')}>
             <div className="left">
               Coffre

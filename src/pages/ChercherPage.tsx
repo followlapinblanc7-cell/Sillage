@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { MOODS, moodLabel, normalizeTags, type MoodId } from '../types';
 import {
   formatDateShort,
@@ -18,7 +18,9 @@ function excerpt(text: string, max = 110): string {
 }
 
 export function ChercherPage({ journal }: Props) {
-  const [q, setQ] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialQ = (searchParams.get('q') ?? '').trim();
+  const [q, setQ] = useState(initialQ);
   const [mood, setMood] = useState<MoodId | null>(null);
   const [tag, setTag] = useState<string | null>(null);
 
