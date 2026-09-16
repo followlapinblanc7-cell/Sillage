@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MOODS, moodLabel, type MoodId } from '../types';
+import { MOODS, moodLabel, normalizeTags, type MoodId } from '../types';
 import {
   formatDateShort,
   type JournalApi,
@@ -20,13 +20,15 @@ function excerpt(text: string, max = 110): string {
 export function ChercherPage({ journal }: Props) {
   const [q, setQ] = useState('');
   const [mood, setMood] = useState<MoodId | null>(null);
+  const [tag, setTag] = useState<string | null>(null);
 
   const results = useMemo(
-    () => journal.search(q, mood),
-    [journal, q, mood],
+    () => journal.search(q, mood, tag),
+    [journal, q, mood, tag],
   );
 
-  const showResults = q.trim().length > 0 || mood !== null;
+  const knownTags = journal.tagsInData;
+  const showResults = q.trim().length > 0 || mood !== null || tag !== null;
 
   return (
     <div className="chercher-page">
@@ -38,7 +40,7 @@ export function ChercherPage({ journal }: Props) {
       <input
         className="search-input"
         type="search"
-        placeholder="Titre, lieu, humeur, un mot…"
+        placeholder="Titre, lieu, étiquette, un mot…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         aria-label="Rechercher un jour"
@@ -46,7 +48,7 @@ export function ChercherPage({ journal }: Props) {
 
       <div
         className="mood-chips"
-        style={{ marginBottom: 18 }}
+        style={{ marginBottom: knownTags.length ? 10 : 18 }}
         role="group"
         aria-label="Filtrer par humeur"
       >
@@ -64,9 +66,45 @@ export function ChercherPage({ journal }: Props) {
         ))}
       </div>
 
+      {knownTags.length > 0 ? (
+        <div
+          className="tag-filter-row"
+          role="group"
+          aria-label="Filtrer par étiquette"
+        >
+          {knownTags.map((t) => (
+            <button
+              key={t.toLocaleLowerCase('fr')}
+              type="button"
+              className={`tag-chip filter${
+                tag && tag.toLocaleLowerCase('fr') === t.toLocaleLowerCase('fr')
+                  ? ' active'
+                  : ''
+              }`}
+              aria-pressed={
+                !!(
+                  tag &&
+                  tag.toLocaleLowerCase('fr') === t.toLocaleLowerCase('fr')
+                )
+              }
+              onClick={() =>
+                setTag((prev) =>
+                  prev &&
+                  prev.toLocaleLowerCase('fr') === t.toLocaleLowerCase('fr')
+                    ? null
+                    : t,
+                )
+              }
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {!showResults ? (
         <p className="search-empty">
-          Tape un mot ou choisis une humeur.
+          Tape un mot, une étiquette, ou choisis une humeur.
         </p>
       ) : results.length === 0 ? (
         <p className="search-empty">Aucun jour trouvé.</p>
@@ -75,6 +113,7 @@ export function ChercherPage({ journal }: Props) {
           {results.map((d) => {
             const moodText = moodLabel(d.mood);
             const location = d.location.trim();
+            const dayTags = normalizeTags(d.tags);
             const meta = [moodText || null, location || null]
               .filter(Boolean)
               .join(' · ');
@@ -97,6 +136,18 @@ export function ChercherPage({ journal }: Props) {
                 ) : null}
                 {meta ? (
                   <div className="search-result-meta">{meta}</div>
+                ) : null}
+                {dayTags.length ? (
+                  <div className="search-result-tags" aria-label="Étiquettes">
+                    {dayTags.map((t) => (
+                      <span
+                        key={t.toLocaleLowerCase('fr')}
+                        className="tag-chip plain"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
                 ) : null}
               </Link>
             );

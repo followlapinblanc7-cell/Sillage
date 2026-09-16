@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { MOODS } from '../types';
+import { MOODS, addNormalizedTag, normalizeTags } from '../types';
 import {
   formatDateLong,
   hasContent,
@@ -29,8 +29,9 @@ export function DayPage({ journal }: Props) {
   const day = journal.getDay(id);
   const isToday = id === journal.today;
   const [metaOpen, setMetaOpen] = useState(() =>
-    !!(day.location || day.mood || day.photos.length),
+    !!(day.location || day.mood || day.photos.length || (day.tags && day.tags.length)),
   );
+  const [tagDraft, setTagDraft] = useState('');
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
@@ -47,6 +48,7 @@ export function DayPage({ journal }: Props) {
         story: day.story,
         location: day.location,
         mood: day.mood,
+        tags: day.tags ?? [],
         photos: day.photos.map((p) => `${p.id}:${p.pinned ? 1 : 0}`),
         private: day.private,
         pinned: day.pinned,
@@ -57,6 +59,7 @@ export function DayPage({ journal }: Props) {
       day.story,
       day.location,
       day.mood,
+      day.tags,
       day.photos,
       day.private,
       day.pinned,
@@ -95,6 +98,8 @@ export function DayPage({ journal }: Props) {
     };
   }, []);
 
+  const tags = useMemo(() => normalizeTags(day.tags), [day.tags]);
+
   const metaSummary = useMemo(() => {
     const parts: string[] = [];
     if (day.mood) {
@@ -102,12 +107,39 @@ export function DayPage({ journal }: Props) {
       if (m) parts.push(`${m.icon} ${m.label}`);
     }
     if (day.location.trim()) parts.push(day.location.trim());
+    if (tags.length) {
+      parts.push(
+        tags.length === 1 ? tags[0] : `${tags.length} étiquettes`,
+      );
+    }
     if (day.photos.length) {
       const n = day.photos.length;
       parts.push(`${n} photo${n > 1 ? 's' : ''}`);
     }
-    return parts.length ? parts.join(' · ') : 'Lieu, humeur, photos…';
-  }, [day.mood, day.location, day.photos.length]);
+    return parts.length ? parts.join(' · ') : 'Lieu, humeur, étiquettes…';
+  }, [day.mood, day.location, day.photos.length, tags]);
+
+  const commitTag = () => {
+    const next = addNormalizedTag(tags, tagDraft);
+    if (next.length === tags.length && !tagDraft.trim()) {
+      setTagDraft('');
+      return;
+    }
+    if (next.length === tags.length) {
+      setTagDraft('');
+      return;
+    }
+    journal.updateDay(id, { tags: next });
+    setTagDraft('');
+    setMetaOpen(true);
+  };
+
+  const removeTag = (tag: string) => {
+    const key = tag.toLocaleLowerCase('fr');
+    journal.updateDay(id, {
+      tags: tags.filter((t) => t.toLocaleLowerCase('fr') !== key),
+    });
+  };
 
   const badgeLabel = day.private
     ? 'Coffre'
@@ -252,6 +284,46 @@ export function DayPage({ journal }: Props) {
               </button>
             ))}
           </div>
+
+          <div className="field-label">Étiquettes</div>
+          <div className="tag-editor" role="group" aria-label="Étiquettes du jour">
+            {tags.map((tag) => (
+              <button
+                key={tag.toLocaleLowerCase('fr')}
+                type="button"
+                className="tag-chip"
+                onClick={() => removeTag(tag)}
+                aria-label={`Retirer l’étiquette ${tag}`}
+                title="Retirer"
+              >
+                <span>{tag}</span>
+                <span aria-hidden="true">×</span>
+              </button>
+            ))}
+            <input
+              className="tag-input"
+              type="text"
+              placeholder="Ajouter…"
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitTag();
+                }
+              }}
+              onBlur={() => {
+                if (tagDraft.trim()) commitTag();
+              }}
+              aria-label="Ajouter une étiquette"
+              enterKeyHint="done"
+              autoCapitalize="off"
+              autoCorrect="off"
+            />
+          </div>
+          <p className="tag-hint muted">
+            Entrée pour ajouter · toucher une étiquette pour la retirer
+          </p>
 
           <div className="field-label">Photos</div>
           <div className="photos-grid">
