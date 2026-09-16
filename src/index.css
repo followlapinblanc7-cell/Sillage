@@ -1652,7 +1652,7 @@ img {
 
 /* Lieux — quiet carte des lieux (Tiroir) */
 .lieux-page {
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
 .lieux-back {
@@ -1665,15 +1665,31 @@ img {
   margin: 0 0 18px;
   border-radius: var(--radius);
   overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  background: #16110f;
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 58, 58, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.lieux-map-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 48px rgba(26, 18, 16, 0.45);
+  z-index: 350;
 }
 
 .lieux-map {
   width: 100%;
-  height: 220px;
-  background: #1a1412;
+  height: clamp(200px, 36vh, 300px);
+  min-height: 180px;
+  background: #16110f;
   z-index: 0;
+  /* Let the page scroll when the finger starts on the map (touch) */
+  touch-action: pan-y;
 }
 
 .lieux-map-fallback,
@@ -1681,8 +1697,18 @@ img {
   margin: 0;
   padding: 14px 16px;
   font-size: 0.85rem;
+  line-height: 1.45;
   color: var(--text-muted);
   text-align: center;
+  font-family: var(--serif);
+  font-style: italic;
+}
+
+.lieux-map-fallback {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .lieux-map-status {
@@ -1690,7 +1716,8 @@ img {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(transparent, rgba(26, 18, 16, 0.88));
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(transparent, rgba(22, 17, 15, 0.92) 38%);
   pointer-events: none;
   z-index: 400;
 }
@@ -1704,22 +1731,28 @@ img {
   display: block;
   width: 12px;
   height: 12px;
-  margin: 3px;
+  margin: 5px;
   border-radius: 50%;
-  background: var(--accent-bright);
+  background: var(--accent);
   box-shadow:
-    0 0 0 2px rgba(245, 237, 228, 0.85),
-    0 2px 8px rgba(0, 0, 0, 0.45);
+    0 0 0 2px var(--cream),
+    0 2px 10px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 .lieux-pin.active .lieux-pin-dot {
   width: 14px;
   height: 14px;
-  margin: 2px;
+  margin: 4px;
   background: var(--cream);
   box-shadow:
     0 0 0 3px var(--accent),
-    0 2px 10px rgba(0, 0, 0, 0.5);
+    0 0 0 5px rgba(139, 58, 58, 0.28),
+    0 3px 12px rgba(0, 0, 0, 0.55);
+  transform: scale(1.05);
 }
 
 .lieux-list {
@@ -1745,13 +1778,23 @@ img {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 52px;
   padding: 14px 16px;
   text-align: left;
   color: var(--text);
+  border-left: 2px solid transparent;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.lieux-row:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
+  background: rgba(245, 237, 228, 0.04);
 }
 
 .lieux-row.selected {
-  background: rgba(245, 237, 228, 0.04);
+  background: var(--accent-soft);
+  border-left-color: var(--accent-bright);
 }
 
 .lieux-row-pin {
@@ -1761,11 +1804,17 @@ img {
   flex-shrink: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1.5px var(--text-faint);
+  transition: background 0.18s ease, box-shadow 0.18s ease;
 }
 
 .lieux-row-pin.on {
-  background: var(--accent-bright);
-  box-shadow: none;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(245, 237, 228, 0.55);
+}
+
+.lieux-row-pin.on.selected {
+  background: var(--cream);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .lieux-row-text {
@@ -1777,7 +1826,11 @@ img {
 }
 
 .lieux-row-label {
-  font-size: 0.98rem;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.08rem;
+  line-height: 1.25;
   color: var(--cream);
 }
 
@@ -1789,6 +1842,10 @@ img {
 .lieux-row .chev {
   color: var(--text-faint);
   flex-shrink: 0;
+}
+
+.lieux-row.selected .chev {
+  color: var(--accent-bright);
 }
 
 .lieux-days {
@@ -1843,7 +1900,14 @@ img {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 0;
+  padding: 12px 0;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+}
+
+.lieux-day-link:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
 }
 
 .lieux-day-date {
@@ -1857,38 +1921,71 @@ img {
   color: var(--text);
 }
 
-/* Leaflet attribution — soft on dark theme */
+/* Leaflet chrome — soft on dark Sillage theme */
 .lieux-map .leaflet-control-attribution {
-  background: rgba(26, 18, 16, 0.72) !important;
+  background: rgba(22, 17, 15, 0.78) !important;
   color: var(--text-faint) !important;
   font-size: 9px !important;
-  max-width: 70%;
+  max-width: 72%;
+  margin: 0 !important;
+  border-radius: 0;
+  padding: 3px 8px !important;
 }
 
 .lieux-map .leaflet-control-attribution a {
   color: var(--text-muted) !important;
 }
 
-.lieux-map .leaflet-popup-content-wrapper {
+.lieux-map .leaflet-popup-content-wrapper,
+.lieux-map .lieux-popup-wrap .leaflet-popup-content-wrapper {
   background: var(--bg-elevated);
   color: var(--cream);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   font-family: var(--sans);
 }
 
-.lieux-map .leaflet-popup-tip {
+.lieux-map .leaflet-popup-tip,
+.lieux-map .lieux-popup-wrap .leaflet-popup-tip {
   background: var(--bg-elevated);
+  border: none;
+  box-shadow: none;
 }
 
 .lieux-map .leaflet-popup-content {
-  margin: 10px 12px;
-  font-size: 0.88rem;
+  margin: 8px 12px !important;
+  font-size: 0.86rem;
   line-height: 1.35;
 }
 
-.lieux-map .leaflet-popup-content strong {
+.lieux-popup {
+  margin: 0;
+}
+
+.lieux-popup-label {
+  margin: 0;
   font-family: var(--serif);
   font-style: italic;
   font-weight: 500;
+  font-size: 1.02rem;
+  color: var(--cream);
+}
+
+.lieux-popup-meta {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-style: normal;
+}
+
+.lieux-map .leaflet-popup-close-button {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .lieux-map {
+    height: clamp(220px, 34vh, 320px);
+  }
 }

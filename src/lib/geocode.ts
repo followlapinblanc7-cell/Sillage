@@ -103,7 +103,10 @@ async function fetchNominatim(query: string): Promise<GeocodeHit | null> {
     // but we still send it where allowed and identify as Sillage in comments/docs.
   });
 
-  if (!res.ok) return null;
+  // Transient / rate-limit — do not cache as a lasting miss
+  if (!res.ok) {
+    throw new Error(`geocode http ${res.status}`);
+  }
   const data = (await res.json()) as Array<{
     lat?: string;
     lon?: string;
@@ -124,6 +127,7 @@ async function fetchNominatim(query: string): Promise<GeocodeHit | null> {
 /**
  * Resolve a free-text place. Returns a hit, null on known miss / failure,
  * never throws. Results are cached in localStorage.
+ * Network/offline errors are not cached as misses so they can retry later.
  */
 export function geocodeLocation(raw: string): Promise<GeocodeHit | null> {
   const query = normalizeQuery(raw);
@@ -145,7 +149,7 @@ export function geocodeLocation(raw: string): Promise<GeocodeHit | null> {
       storeMiss(key);
       return null;
     } catch {
-      storeMiss(key);
+      // Offline, timeout, or HTTP error — leave uncached for a later pass
       return null;
     }
   });

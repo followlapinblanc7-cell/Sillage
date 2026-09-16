@@ -31,6 +31,19 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function pinIcon(L: LeafletNamespace, active: boolean) {
+  return L.divIcon({
+    className: `lieux-pin${active ? ' active' : ''}`,
+    html: '<span class="lieux-pin-dot" aria-hidden="true"></span>',
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
+
+function popupHtml(label: string, days: number): string {
+  return `<div class="lieux-popup"><p class="lieux-popup-label">${escapeHtml(label)}</p><p class="lieux-popup-meta">${dayCountLabel(days)}</p></div>`;
+}
+
 export function LieuxPage({ journal }: Props) {
   const lieux = useMemo(
     () => collectLieux(journal.visibleDays),
@@ -42,32 +55,48 @@ export function LieuxPage({ journal }: Props) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
+  const [tilesFailed, setTilesFailed] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
+  const [geocodeDone, setGeocodeDone] = useState(0);
 
   const mapElRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Map<string, LeafletMarker>>(new Map());
   const LRef = useRef<LeafletNamespace | null>(null);
   const lieuxRef = useRef(lieux);
+  const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const selectedKeyRef = useRef<string | null>(null);
+  const lastPinCountRef = useRef(0);
+  const skipNextFlyRef = useRef(false);
+
   useEffect(() => {
     lieuxRef.current = lieux;
   }, [lieux]);
+
+  useEffect(() => {
+    selectedKeyRef.current = selectedKey;
+  }, [selectedKey]);
 
   // Geocode unique labels sequentially (cache-aware, ≤1 req/s)
   useEffect(() => {
     if (!hasLieux) {
       setCoords({});
       setGeocoding(false);
+      setGeocodeDone(0);
       return;
     }
     let cancelled = false;
     setGeocoding(true);
+    setGeocodeDone(0);
 
     (async () => {
+      let done = 0;
       for (const lieu of lieux) {
         if (cancelled) return;
         const hit = await geocodeLocation(lieu.label);
         if (cancelled) return;
+        done += 1;
+        setGeocodeDone(done);
         setCoords((prev) =>
           prev[lieu.key] === hit ? prev : { ...prev, [lieu.key]: hit },
         );
@@ -87,6 +116,8 @@ export function LieuxPage({ journal }: Props) {
     if (!el) return;
     let cancelled = false;
     let resizeObs: ResizeObserver | null = null;
+    let tileErrorCount = 0;
+    const onWinResize = () => mapRef.current?.invalidateSize();
 
     (async () => {
       try {
@@ -94,28 +125,43 @@ export function LieuxPage({ journal }: Props) {
         if (cancelled) return;
         LRef.current = L;
 
+        const finePointer =
+          typeof window !== 'undefined' &&
+          window.matchMedia('(pointer: fine)').matches;
+
         const map = L.map(el, {
           zoomControl: false,
           attributionControl: true,
           scrollWheelZoom: false,
+          // On touch devices, keep page scroll; pinch still zooms
+          dragging: finePointer,
+          tapTolerance: 18,
         }).setView([46.6, 2.4], 5);
 
-        L.tileLayer(
+        const tiles = L.tileLayer(
           'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
           {
             attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · <a href="https://carto.com/">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 19,
           },
-        ).addTo(map);
+        );
+        tiles.on('tileerror', () => {
+          tileErrorCount += 1;
+          if (tileErrorCount >= 6) setTilesFailed(true);
+        });
+        tiles.addTo(map);
 
         mapRef.current = map;
         setMapReady(true);
         setMapError(false);
+        setTilesFailed(false);
         requestAnimationFrame(() => map.invalidateSize());
         resizeObs = new ResizeObserver(() => map.invalidateSize());
         resizeObs.observe(el);
+        window.addEventListener('resize', onWinResize);
+        window.addEventListener('orientationchange', onWinResize);
       } catch {
         if (!cancelled) {
           setMapError(true);
@@ -127,6 +173,8 @@ export function LieuxPage({ journal }: Props) {
     return () => {
       cancelled = true;
       resizeObs?.disconnect();
+      window.removeEventListener('resize', onWinResize);
+      window.removeEventListener('orientationchange', onWinResize);
       markersRef.current.clear();
       if (mapRef.current) {
         mapRef.current.remove();
@@ -137,9 +185,7 @@ export function LieuxPage({ journal }: Props) {
     };
   }, [hasLieux]);
 
-  const lastPinCountRef = useRef(0);
-
-  // Rebuild markers when coords change; refresh active style on selection
+  // Rebuild markers when coords change (not on mere selection)
   useEffect(() => {
     const map = mapRef.current;
     const L = LRef.current;
@@ -166,24 +212,36 @@ export function LieuxPage({ journal }: Props) {
       pinCount += 1;
       const latlng: [number, number] = [hit.lat, hit.lon];
       bounds.extend(latlng);
-      const active = selectedKey === lieu.key;
-      const icon = L.divIcon({
-        className: `lieux-pin${active ? ' active' : ''}`,
-        html: '<span class="lieux-pin-dot" aria-hidden="true"></span>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      });
+      const active = selectedKeyRef.current === lieu.key;
 
       const prev = markersRef.current.get(lieu.key);
-      if (prev) map.removeLayer(prev);
-
-      const marker = L.marker(latlng, { icon, title: lieu.label });
-      marker.addTo(map);
-      marker.bindPopup(
-        `<strong>${escapeHtml(lieu.label)}</strong><br/>${dayCountLabel(lieu.days.length)}`,
-      );
-      marker.on('click', () => setSelectedKey(lieu.key));
-      markersRef.current.set(lieu.key, marker);
+      if (prev) {
+        prev.setLatLng(latlng);
+        prev.setIcon(pinIcon(L, active));
+        prev.bindPopup(popupHtml(lieu.label, lieu.days.length), {
+          className: 'lieux-popup-wrap',
+          closeButton: false,
+          offset: [0, -6],
+        });
+      } else {
+        const marker = L.marker(latlng, {
+          icon: pinIcon(L, active),
+          title: lieu.label,
+          riseOnHover: true,
+        });
+        marker.bindPopup(popupHtml(lieu.label, lieu.days.length), {
+          className: 'lieux-popup-wrap',
+          closeButton: false,
+          offset: [0, -6],
+        });
+        marker.on('click', () => {
+          // Pin tap: select + scroll list; skip fly (already on pin)
+          skipNextFlyRef.current = true;
+          setSelectedKey(lieu.key);
+        });
+        marker.addTo(map);
+        markersRef.current.set(lieu.key, marker);
+      }
     }
 
     // Refit when pins appear or increase (not on mere selection change)
@@ -194,22 +252,76 @@ export function LieuxPage({ journal }: Props) {
         const hit = only ? coords[only.key] : null;
         if (hit) map.setView([hit.lat, hit.lon], 11);
       } else if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [36, 36], maxZoom: 12 });
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
       }
     }
 
     requestAnimationFrame(() => map.invalidateSize());
-  }, [coords, mapReady, selectedKey]);
+  }, [coords, mapReady]);
 
   useEffect(() => {
     if (!mapReady) lastPinCountRef.current = 0;
   }, [mapReady]);
+
+  // Selection ↔ map: highlight pin, fly/pan, open quiet popup, scroll list
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = LRef.current;
+    if (!map || !L || !mapReady) return;
+
+    for (const [key, marker] of markersRef.current) {
+      const active = selectedKey === key;
+      marker.setIcon(pinIcon(L, active));
+      if (!active) marker.closePopup();
+    }
+
+    if (!selectedKey) {
+      skipNextFlyRef.current = false;
+      return;
+    }
+
+    const hit = coords[selectedKey];
+    const marker = markersRef.current.get(selectedKey);
+    const skipFly = skipNextFlyRef.current;
+    skipNextFlyRef.current = false;
+
+    if (hit && marker) {
+      if (!skipFly) {
+        const zoom = Math.max(map.getZoom(), 11);
+        map.flyTo([hit.lat, hit.lon], zoom, { duration: 0.55 });
+      }
+      // Open after a beat so fly doesn't fight the popup
+      const t = window.setTimeout(() => {
+        marker.openPopup();
+        map.invalidateSize();
+      }, skipFly ? 0 : 280);
+      // Scroll list row into view
+      const row = rowRefs.current.get(selectedKey);
+      row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return () => window.clearTimeout(t);
+    }
+
+    // No pin — still scroll the list row into view
+    rowRefs.current.get(selectedKey)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+    });
+  }, [selectedKey, mapReady, coords]);
+
+  // When the day panel opens, map size may shift — refresh tiles
+  useEffect(() => {
+    if (!mapReady) return;
+    const id = requestAnimationFrame(() => mapRef.current?.invalidateSize());
+    return () => cancelAnimationFrame(id);
+  }, [selectedKey, mapReady]);
 
   const selected: LieuGroup | null = selectedKey
     ? (lieux.find((l) => l.key === selectedKey) ?? null)
     : null;
 
   const pinCount = lieux.filter((l) => coords[l.key]).length;
+  const resolvedCount = Object.keys(coords).length;
+  const pendingCount = Math.max(0, lieux.length - resolvedCount);
 
   if (!hasLieux) {
     return (
@@ -218,7 +330,7 @@ export function LieuxPage({ journal }: Props) {
           ← Retour
         </Link>
         <h1 className="page-title">Lieux</h1>
-        <p className="page-sub">Les endroits que tu as notés</p>
+        <p className="page-sub">Des traces d&apos;endroits gardés</p>
         <div className="empty-state">
           <p className="empty-quote">
             « Les lieux n&apos;attendent que d&apos;être nommés. »
@@ -231,45 +343,56 @@ export function LieuxPage({ journal }: Props) {
     );
   }
 
+  const subCopy =
+    lieux.length === 1
+      ? 'Un lieu gardé dans tes traces'
+      : `${lieux.length} lieux gardés dans tes traces`;
+
+  let statusMessage: string | null = null;
+  if (!mapError) {
+    if (tilesFailed) {
+      statusMessage =
+        'La carte peine à se charger — la liste reste lisible.';
+    } else if (geocoding && pendingCount > 0) {
+      statusMessage =
+        lieux.length === 1
+          ? 'Le lieu se place…'
+          : `Les lieux se placent… ${geocodeDone} sur ${lieux.length}`;
+    } else if (!geocoding && pinCount === 0 && resolvedCount >= lieux.length) {
+      statusMessage =
+        'Ces lieux restent dans la liste — la carte ne les a pas trouvés.';
+    }
+  }
+
   return (
     <div className="lieux-page">
       <Link to="/tiroir" className="btn-ghost lieux-back">
         ← Retour
       </Link>
       <h1 className="page-title">Lieux</h1>
-      <p className="page-sub">
-        {lieux.length === 1
-          ? 'Un endroit dans ton journal'
-          : `${lieux.length} endroits dans ton journal`}
-      </p>
+      <p className="page-sub">{subCopy}</p>
 
       <div className="lieux-map-wrap">
         {mapError ? (
           <p className="lieux-map-fallback" role="status">
-            La carte est indisponible hors ligne. La liste reste là.
+            La carte dort hors ligne. La liste, elle, reste.
           </p>
         ) : (
           <div
             ref={mapElRef}
             className="lieux-map"
             role="img"
-            aria-label="Carte des lieux du journal"
+            aria-label="Carte des lieux gardés"
           />
         )}
-        {!mapError && geocoding && pinCount < lieux.length ? (
+        {statusMessage ? (
           <p className="lieux-map-status" role="status">
-            Placement des lieux…
-          </p>
-        ) : null}
-        {!mapError && !geocoding && pinCount === 0 ? (
-          <p className="lieux-map-status" role="status">
-            Impossible de placer ces lieux pour l&apos;instant — ils restent
-            dans la liste.
+            {statusMessage}
           </p>
         ) : null}
       </div>
 
-      <ul className="lieux-list" aria-label="Liste des lieux">
+      <ul className="lieux-list" aria-label="Liste des lieux gardés">
         {lieux.map((lieu) => {
           const hasPin = !!coords[lieu.key];
           const knownMiss = coords[lieu.key] === null;
@@ -278,6 +401,10 @@ export function LieuxPage({ journal }: Props) {
             <li key={lieu.key}>
               <button
                 type="button"
+                ref={(node) => {
+                  if (node) rowRefs.current.set(lieu.key, node);
+                  else rowRefs.current.delete(lieu.key);
+                }}
                 className={`lieux-row${isSelected ? ' selected' : ''}`}
                 onClick={() =>
                   setSelectedKey((prev) =>
@@ -285,17 +412,19 @@ export function LieuxPage({ journal }: Props) {
                   )
                 }
                 aria-pressed={isSelected}
+                aria-current={isSelected ? 'true' : undefined}
                 aria-expanded={isSelected}
               >
                 <span
-                  className={`lieux-row-pin${hasPin ? ' on' : ''}`}
+                  className={`lieux-row-pin${hasPin ? ' on' : ''}${isSelected ? ' selected' : ''}`}
                   aria-hidden="true"
                 />
                 <span className="lieux-row-text">
                   <span className="lieux-row-label">{lieu.label}</span>
                   <span className="lieux-row-meta">
                     {dayCountLabel(lieu.days.length)}
-                    {knownMiss ? ' · sans pin' : ''}
+                    {knownMiss ? ' · hors carte' : ''}
+                    {!hasPin && !knownMiss && geocoding ? ' · …' : ''}
                   </span>
                 </span>
                 <span className="chev" aria-hidden="true">

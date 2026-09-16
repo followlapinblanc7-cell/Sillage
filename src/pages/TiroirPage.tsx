@@ -717,7 +717,7 @@ export function TiroirPage({ journal }: Props) {
           <Link to="/lieux" className="drawer-row">
             <div className="left">
               Lieux
-              <span>Carte des endroits notés</span>
+              <span>Des lieux gardés sur la carte</span>
             </div>
             <span className="chev">›</span>
           </Link>
