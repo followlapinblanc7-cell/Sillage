@@ -13,94 +13,108 @@ export const CARTO_TILES: Record<ThemeId, string> = {
 };
 
 /**
- * Monde 3D globe — cinematic Earth-at-night (city lights).
- * Same night look for dark and light app themes (cinematic contrast on cream UI).
- * CDN textures from three-globe examples (NASA Blue Marble Night Lights style);
- * not SW-precached (runtime fetch only). Landmass presence via soft amber polygon wash
- * + emissive boost on the night plate (oceans stay near-black).
+ * Monde 3D — drawn political / atlas globe (not satellite or night-Earth).
+ * Solid ocean plate + country polygons (Natural Earth 110m). Night photo /
+ * starfield / emissive city-lights path is idle in this mode.
  */
-export const GLOBE_NIGHT_EARTH_URL =
-  'https://cdn.jsdelivr.net/npm/three-globe@2.45.2/example/img/earth-night.jpg';
 
-/** Starfield / space backdrop for globe.gl `backgroundImageUrl`. */
-export const GLOBE_STARFIELD_URL =
-  'https://cdn.jsdelivr.net/npm/three-globe@2.45.2/example/img/night-sky.png';
-
-/** @deprecated Prefer GLOBE_NIGHT_EARTH_URL — kept as CDN fallback reference. */
-export const GLOBE_EARTH_URL: Record<ThemeId, string> = {
-  dark: GLOBE_NIGHT_EARTH_URL,
-  light: GLOBE_NIGHT_EARTH_URL,
+/** Calm ocean ink under country polygons. */
+export const GLOBE_OCEAN: Record<ThemeId, string> = {
+  dark: '#1c2830',
+  light: '#b9c8d2',
 };
 
-export function nightGlobeImageUrl(_theme?: ThemeId): string {
-  return GLOBE_NIGHT_EARTH_URL;
+const oceanUrlCache: Partial<Record<ThemeId, string>> = {};
+
+/** Tiny solid equirectangular texture — land comes only from polygons. */
+export function oceanGlobeImageUrl(theme: ThemeId): string {
+  const cached = oceanUrlCache[theme];
+  if (cached) return cached;
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = 4;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    oceanUrlCache[theme] = '';
+    return '';
+  }
+  ctx.fillStyle = GLOBE_OCEAN[theme];
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const url = canvas.toDataURL('image/png');
+  oceanUrlCache[theme] = url;
+  return url;
 }
 
 /**
- * Soft warm land washes over night Earth — lift continents without hiding city lights.
- * Same cinematic night look for both app themes; oceans stay dark (no ocean fill).
+ * Small categorical country palette (warm paper / ink family).
+ * Index via country a3 hash so neighbours often differ.
  */
-const NIGHT_LAND_CAP = {
-  Africa: 'rgba(232, 188, 118, 0.17)',
-  Europe: 'rgba(236, 198, 132, 0.18)',
-  Asia: 'rgba(230, 184, 112, 0.17)',
-  'North America': 'rgba(234, 196, 128, 0.17)',
-  'South America': 'rgba(228, 182, 108, 0.16)',
-  Oceania: 'rgba(226, 190, 124, 0.16)',
-  Antarctica: 'rgba(176, 188, 210, 0.08)',
-} as const;
-
-export const GLOBE_CONTINENT_CAP: Record<ThemeId, Record<string, string>> = {
-  dark: { ...NIGHT_LAND_CAP },
-  light: { ...NIGHT_LAND_CAP },
+export const GLOBE_COUNTRY_PALETTE: Record<ThemeId, string[]> = {
+  dark: [
+    'rgba(158, 108, 78, 0.94)',
+    'rgba(138, 112, 122, 0.94)',
+    'rgba(168, 120, 88, 0.94)',
+    'rgba(108, 126, 140, 0.94)',
+    'rgba(112, 132, 104, 0.94)',
+    'rgba(96, 128, 124, 0.94)',
+    'rgba(148, 118, 98, 0.94)',
+    'rgba(124, 108, 128, 0.94)',
+  ],
+  light: [
+    'rgba(186, 136, 100, 0.93)',
+    'rgba(158, 130, 140, 0.93)',
+    'rgba(198, 150, 108, 0.93)',
+    'rgba(126, 146, 162, 0.93)',
+    'rgba(132, 156, 122, 0.93)',
+    'rgba(116, 150, 146, 0.93)',
+    'rgba(172, 138, 112, 0.93)',
+    'rgba(146, 128, 150, 0.93)',
+  ],
 };
 
-export const GLOBE_CONTINENT_FALLBACK: Record<ThemeId, string> = {
-  dark: 'rgba(230, 186, 118, 0.16)',
-  light: 'rgba(230, 186, 118, 0.16)',
+/** Antarctica / unknown — cooler parchment. */
+export const GLOBE_COUNTRY_FALLBACK: Record<ThemeId, string> = {
+  dark: 'rgba(150, 144, 136, 0.88)',
+  light: 'rgba(168, 160, 152, 0.86)',
 };
 
-/** Transparent sides — avoid a plastic “extruded” look on night Earth. */
-export const GLOBE_CONTINENT_SIDE: Record<ThemeId, string> = {
-  dark: 'rgba(0, 0, 0, 0)',
-  light: 'rgba(0, 0, 0, 0)',
+export const GLOBE_COUNTRY_SIDE: Record<ThemeId, string> = {
+  dark: 'rgba(28, 22, 18, 0.28)',
+  light: 'rgba(70, 55, 45, 0.14)',
 };
 
-/** Hairline warm rim so coastlines read without covering lights. */
-export const GLOBE_CONTINENT_STROKE: Record<ThemeId, string> = {
-  dark: 'rgba(255, 220, 160, 0.14)',
-  light: 'rgba(255, 220, 160, 0.12)',
+/** Thin ink borders so political outlines read clearly. */
+export const GLOBE_COUNTRY_STROKE: Record<ThemeId, string> = {
+  dark: 'rgba(28, 22, 18, 0.55)',
+  light: 'rgba(78, 58, 44, 0.38)',
 };
 
-/**
- * Night-texture material boost (MeshPhongMaterial via globe.gl).
- * EmissiveMap = night plate so city lights / lit land pop; near-black oceans stay dark.
- */
-export const GLOBE_NIGHT_EMISSIVE = {
-  color: '#fff2dc',
-  intensity: 0.58,
-} as const;
+/** Subtle graticule (paths). */
+export const GLOBE_GRATICULE: Record<ThemeId, { color: string; stroke: number }> =
+  {
+    dark: { color: 'rgba(210, 190, 160, 0.09)', stroke: 0.35 },
+    light: { color: 'rgba(70, 55, 45, 0.1)', stroke: 0.35 },
+  };
 
-/** Soft blue-white atmospheric rim (Earth-from-space halo). */
+/** Soft warm atmospheric rim — atlas, not Earth-from-space blue. */
 export const GLOBE_ATMOSPHERE: Record<
   ThemeId,
   { color: string; altitude: number }
 > = {
-  dark: { color: '#a8ceff', altitude: 0.31 },
-  /** Slightly softer rim on light UI; globe surface stays night. */
-  light: { color: '#bcd8ff', altitude: 0.27 },
+  dark: { color: 'rgba(184, 140, 100, 0.42)', altitude: 0.15 },
+  light: { color: 'rgba(196, 160, 120, 0.38)', altitude: 0.14 },
 };
 
-/** Deep space behind the starfield texture (fallback while image loads). */
+/** Soft space / paper backdrop (no starfield photo). */
 export const GLOBE_BG: Record<ThemeId, string> = {
-  dark: 'rgba(2, 4, 10, 1)',
-  light: 'rgba(4, 8, 16, 1)',
+  dark: 'rgba(18, 14, 12, 1)',
+  light: 'rgba(236, 228, 216, 1)',
 };
 
-/** Warm cream / soft gold — readable on city-light clusters. */
+/** Warm cream / soft gold — readable on muted country fills. */
 export const GLOBE_PIN = {
-  idle: '#f0e2c4',
-  active: '#fff6dc',
+  idle: '#f2e4c0',
+  active: '#fff8e4',
   pending: '#e8c98a',
 } as const;
 
