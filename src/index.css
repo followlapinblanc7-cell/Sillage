@@ -1,3 +1,5 @@
+@import './fonts.css';
+
 :root {
   --bg: #1a1210;
   --bg-elevated: #221814;
@@ -804,6 +806,32 @@ img {
   color: var(--text-muted);
   font-size: 0.85rem;
   background: rgba(245, 237, 228, 0.02);
+}
+
+/* Album month filter */
+.month-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: 0 0 18px;
+  padding-bottom: 2px;
+}
+
+.month-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.month-chips .mood-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.album-month-empty {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
 }
 
 /* Album */

@@ -1,5 +1,5 @@
 /* Sillage — app-shell service worker (cache-first for same-origin assets) */
-const CACHE = 'sillage-shell-v3';
+const CACHE = 'sillage-shell-v4';
 const PRECACHE = [
   '/Sillage/',
   '/Sillage/index.html',
@@ -8,6 +8,28 @@ const PRECACHE = [
   '/Sillage/pwa-192.png',
   '/Sillage/pwa-512.png',
   '/Sillage/apple-touch-icon.png',
+  '/Sillage/fonts/cormorant-garamond-latin-400-italic.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-400-normal.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-500-italic.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-500-normal.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-600-italic.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-600-normal.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-ext-400-italic.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-ext-400-normal.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-ext-500-italic.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-ext-500-normal.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-ext-600-italic.woff2',
+  '/Sillage/fonts/cormorant-garamond-latin-ext-600-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-300-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-400-italic.woff2',
+  '/Sillage/fonts/source-sans-3-latin-400-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-500-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-600-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-ext-300-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-ext-400-italic.woff2',
+  '/Sillage/fonts/source-sans-3-latin-ext-400-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-ext-500-normal.woff2',
+  '/Sillage/fonts/source-sans-3-latin-ext-600-normal.woff2',
 ];
 
 self.addEventListener('install', (event) => {
@@ -59,7 +81,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // Do not cache Google Fonts / third-party
+  // Do not cache third-party origins
   if (url.origin !== self.location.origin) return;
 
   // Navigations: network-first, fall back to cached shell
