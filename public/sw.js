@@ -1,5 +1,5 @@
 /* Sillage — app-shell service worker (cache-first for same-origin assets) */
-const CACHE = 'sillage-shell-v19';
+const CACHE = 'sillage-shell-v20';
 const PRECACHE = [
   '/Sillage/',
   '/Sillage/index.html',

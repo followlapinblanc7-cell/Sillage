@@ -39,3 +39,4 @@ npm run preview
 - **Album** — grilles de couvertures
 - **Chercher** — texte + filtres d’humeur
 - **Tiroir** — épinglés, privé, réglages
+- **Monde** — globe 3D « Earth at night » (lumières urbaines, halo atmosphérique, fond étoilé) ; même look nuit en thème clair (contraste cinématographique)
