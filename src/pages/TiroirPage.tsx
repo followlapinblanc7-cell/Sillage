@@ -20,6 +20,11 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+declare global {
+  interface Window {
+    __sillageInstallPrompt?: Event | null;
+  }
+}
 
 const HOUR_OPTIONS = [20, 21, 22] as const;
 
@@ -343,17 +348,32 @@ function ReglagesSection({
   );
 
   useEffect(() => {
+    const readInstallPrompt = () => {
+      const prompt = window.__sillageInstallPrompt;
+      if (prompt) {
+        setInstallPrompt(prompt as BeforeInstallPromptEvent);
+      }
+    };
     const onBip = (e: Event) => {
       e.preventDefault();
+      window.__sillageInstallPrompt = e;
       setInstallPrompt(e as BeforeInstallPromptEvent);
     };
+    const onInstallAvailable = () => readInstallPrompt();
+
+    readInstallPrompt();
     window.addEventListener('beforeinstallprompt', onBip);
-    return () => window.removeEventListener('beforeinstallprompt', onBip);
+    window.addEventListener('sillage-install-available', onInstallAvailable);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBip);
+      window.removeEventListener('sillage-install-available', onInstallAvailable);
+    };
   }, []);
 
   const handleInstallPwa = async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
+    window.__sillageInstallPrompt = null;
     setInstallPrompt(null);
   };
 
@@ -538,7 +558,7 @@ function ReglagesSection({
             <span>
               {installPrompt
                 ? 'Ajouter Sillage comme application sur cet appareil'
-                : 'iOS — Partager → Sur l’écran d’accueil. Android — Menu du navigateur → Installer l’application'}
+                : 'Android — tape l’icône ↓ à droite de l’adresse, ou ⋮ → Installer l’application. iPhone — Safari → Partager → Sur l’écran d’accueil.'}
             </span>
           </div>
           {installPrompt ? (
