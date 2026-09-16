@@ -13,6 +13,15 @@ export interface GlobePointerObject {
   __globeObjType?: string;
 }
 
+export interface GlobeMaterial {
+  map?: unknown;
+  emissiveMap?: unknown;
+  emissive?: { set: (color: string) => unknown };
+  emissiveIntensity?: number;
+  color?: { set: (color: string) => unknown };
+  needsUpdate?: boolean;
+}
+
 export interface GlobeInstance {
   width: (w?: number) => number | GlobeInstance;
   height: (h?: number) => number | GlobeInstance;
@@ -23,6 +32,8 @@ export interface GlobeInstance {
   showAtmosphere: (show: boolean) => GlobeInstance;
   atmosphereColor: (color: string) => GlobeInstance;
   atmosphereAltitude: (alt: number) => GlobeInstance;
+  globeMaterial: () => GlobeMaterial | undefined;
+  onGlobeReady: (fn: () => void) => GlobeInstance;
   pointsData: (data: unknown[]) => GlobeInstance;
   pointLat: (acc: string | ((d: unknown) => number)) => GlobeInstance;
   pointLng: (acc: string | ((d: unknown) => number)) => GlobeInstance;
