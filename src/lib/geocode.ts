@@ -476,9 +476,12 @@ function addressHasPoiKey(address: NominatimAddress | undefined): boolean {
 /**
  * Prefer établissements (resto, shop, café…) over cities/admin while still
  * keeping streets and localities when that is what the user typed.
+ * Order: POI (3) → named venue (2) → street/address (1) → locality/admin (0).
  */
 function poiScore(row: NominatimSearchRow): number {
   const cls = (row.class ?? '').toLowerCase();
+  const typ = (row.type ?? '').toLowerCase();
+
   if (POI_CLASSES.has(cls)) return 3;
   if (addressHasPoiKey(row.address)) return 3;
 
@@ -498,6 +501,12 @@ function poiScore(row: NominatimSearchRow): number {
       return 2;
     }
   }
+
+  // Streets / addresses ahead of bare cities and admin areas
+  if (cls === 'highway' || cls === 'building') return 1;
+  if (row.address?.house_number && roadOf(row.address)) return 1;
+  if (cls === 'place' && (typ === 'house' || typ === 'addresses')) return 1;
+
   return 0;
 }
 
