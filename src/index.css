@@ -93,7 +93,11 @@ a,
 .photo-sheet-shutter,
 .pwa-install-btn,
 .sw-update-banner-apply,
-.sw-update-banner-dismiss {
+.sw-update-banner-dismiss,
+.lieux-row,
+.lieux-day-link,
+.lieux-chercher-link,
+.lieux-back {
   touch-action: manipulation;
 }
 
@@ -1624,4 +1628,248 @@ img {
   color: var(--accent-bright);
   border: 1px solid var(--border);
   border-radius: 999px;
+}
+
+
+/* Lieux — quiet carte des lieux (Tiroir) */
+.lieux-page {
+  padding-bottom: 8px;
+}
+
+.lieux-back {
+  display: inline-flex;
+  margin-bottom: 14px;
+}
+
+.lieux-map-wrap {
+  position: relative;
+  margin: 0 0 18px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.lieux-map {
+  width: 100%;
+  height: 220px;
+  background: #1a1412;
+  z-index: 0;
+}
+
+.lieux-map-fallback,
+.lieux-map-status {
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.lieux-map-status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(transparent, rgba(26, 18, 16, 0.88));
+  pointer-events: none;
+  z-index: 400;
+}
+
+.lieux-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+.lieux-pin-dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--accent-bright);
+  box-shadow:
+    0 0 0 2px rgba(245, 237, 228, 0.85),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.lieux-pin.active .lieux-pin-dot {
+  width: 14px;
+  height: 14px;
+  margin: 2px;
+  background: var(--cream);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.lieux-list {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.lieux-list > li {
+  border-bottom: 1px solid var(--border);
+}
+
+.lieux-list > li:last-child {
+  border-bottom: none;
+}
+
+.lieux-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  text-align: left;
+  color: var(--text);
+}
+
+.lieux-row.selected {
+  background: rgba(245, 237, 228, 0.04);
+}
+
+.lieux-row-pin {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-faint);
+}
+
+.lieux-row-pin.on {
+  background: var(--accent-bright);
+  box-shadow: none;
+}
+
+.lieux-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lieux-row-label {
+  font-size: 0.98rem;
+  color: var(--cream);
+}
+
+.lieux-row-meta {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+.lieux-row .chev {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.lieux-days {
+  margin-top: 4px;
+  padding: 14px 16px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.lieux-days-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.lieux-days-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.2rem;
+  color: var(--cream);
+}
+
+.lieux-chercher-link {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  flex-shrink: 0;
+}
+
+.lieux-chercher-link:hover,
+.lieux-chercher-link:focus-visible {
+  color: var(--cream);
+}
+
+.lieux-day-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lieux-day-list > li + li {
+  border-top: 1px solid var(--border);
+}
+
+.lieux-day-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+}
+
+.lieux-day-date {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  letter-spacing: 0.01em;
+}
+
+.lieux-day-title {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+/* Leaflet attribution — soft on dark theme */
+.lieux-map .leaflet-control-attribution {
+  background: rgba(26, 18, 16, 0.72) !important;
+  color: var(--text-faint) !important;
+  font-size: 9px !important;
+  max-width: 70%;
+}
+
+.lieux-map .leaflet-control-attribution a {
+  color: var(--text-muted) !important;
+}
+
+.lieux-map .leaflet-popup-content-wrapper {
+  background: var(--bg-elevated);
+  color: var(--cream);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  font-family: var(--sans);
+}
+
+.lieux-map .leaflet-popup-tip {
+  background: var(--bg-elevated);
+}
+
+.lieux-map .leaflet-popup-content {
+  margin: 10px 12px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.lieux-map .leaflet-popup-content strong {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
 }
