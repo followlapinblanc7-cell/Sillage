@@ -9,6 +9,10 @@ export interface GlobeGeoCoords {
   altitude?: number;
 }
 
+export interface GlobePointerObject {
+  __globeObjType?: string;
+}
+
 export interface GlobeInstance {
   width: (w?: number) => number | GlobeInstance;
   height: (h?: number) => number | GlobeInstance;
@@ -35,6 +39,32 @@ export interface GlobeInstance {
   ) => GlobeInstance;
   onGlobeClick: (
     fn: (coords: { lat: number; lng: number }, event: MouseEvent) => void,
+  ) => GlobeInstance;
+  polygonsData: (data: unknown[]) => GlobeInstance;
+  polygonGeoJsonGeometry: (
+    acc: string | ((d: unknown) => unknown),
+  ) => GlobeInstance;
+  polygonCapColor: (acc: string | ((d: unknown) => string)) => GlobeInstance;
+  polygonSideColor: (acc: string | ((d: unknown) => string)) => GlobeInstance;
+  polygonStrokeColor: (
+    acc: string | ((d: unknown) => string | null | undefined),
+  ) => GlobeInstance;
+  polygonAltitude: (
+    acc: number | string | ((d: unknown) => number),
+  ) => GlobeInstance;
+  polygonLabel: (
+    acc: string | ((d: unknown) => string | null | undefined),
+  ) => GlobeInstance;
+  polygonsTransitionDuration: (ms: number) => GlobeInstance;
+  onPolygonClick: (
+    fn: (
+      polygon: unknown,
+      event: MouseEvent,
+      coords: { lat: number; lng: number; altitude: number },
+    ) => void,
+  ) => GlobeInstance;
+  pointerEventsFilter: (
+    fn: (obj: GlobePointerObject, data?: unknown) => boolean,
   ) => GlobeInstance;
   pointOfView: (
     pov?: { lat?: number; lng?: number; altitude?: number },
