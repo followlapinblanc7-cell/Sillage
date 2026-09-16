@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="30" fill="#6B2D3C"/>
-  <text x="32" y="42" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="32" fill="#F5EDE4">S</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sillage">
+  <rect width="64" height="64" fill="#6B2D3C"/>
+  <g fill="none" stroke="#F5EDE4" stroke-linecap="round" transform="rotate(-20 32 36)">
+    <path d="M12 40 C20 22, 44 22, 52 40" stroke-width="6"/>
+    <path d="M17 43 C24 29, 40 29, 47 43" stroke-width="5"/>
+    <path d="M22 46 C27 36, 37 36, 42 46" stroke-width="4"/>
+  </g>
 </svg>
