@@ -12,13 +12,16 @@ import {
   type GeocodeOutcome,
 } from '../lib/geocode';
 import {
-  loadLeaflet,
-  type LeafletMap,
-  type LeafletMarker,
-  type LeafletNamespace,
-  type LeafletTileLayer,
-} from '../lib/loadLeaflet';
-import { CARTO_TILES } from '../lib/theme';
+  isWebGLAvailable,
+  loadGlobe,
+  type GlobeInstance,
+} from '../lib/loadGlobe';
+import {
+  GLOBE_ATMOSPHERE,
+  GLOBE_BG,
+  GLOBE_EARTH_URL,
+  GLOBE_PIN,
+} from '../lib/theme';
 import type { DayEntry } from '../types';
 
 interface Props {
@@ -34,8 +37,18 @@ interface Pin {
 
 type PlacePhase = 'idle' | 'picking' | 'confirm';
 
-const VIEW_KEY = 'sillage-monde-view-v1';
-const DEFAULT_VIEW = { lat: 20, lon: 8, zoom: 2 };
+const VIEW_KEY = 'sillage-monde-globe-view-v1';
+const DEFAULT_POV = { lat: 20, lng: 8, altitude: 2.35 };
+const PENDING_ID = '__pending__';
+
+interface GlobePoint {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  kind: 'pin' | 'pending';
+  active: boolean;
+}
 
 function excerpt(text: string, max = 110): string {
   const t = text.trim().replace(/\s+/g, ' ');
@@ -44,43 +57,48 @@ function excerpt(text: string, max = 110): string {
   return `${t.slice(0, max).trimEnd()}…`;
 }
 
-function pinIcon(L: LeafletNamespace, active: boolean) {
-  return L.divIcon({
-    className: `monde-pin${active ? ' active' : ''}`,
-    html: '<span class="monde-pin-dot" aria-hidden="true"></span>',
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-  });
-}
-
-function readSavedView(): { lat: number; lon: number; zoom: number } {
+function readSavedView(): { lat: number; lng: number; altitude: number } {
   try {
     const raw = sessionStorage.getItem(VIEW_KEY);
-    if (!raw) return DEFAULT_VIEW;
+    if (!raw) return DEFAULT_POV;
     const parsed = JSON.parse(raw) as {
       lat?: unknown;
-      lon?: unknown;
-      zoom?: unknown;
+      lng?: unknown;
+      altitude?: unknown;
     };
-    const lat = typeof parsed.lat === 'number' ? parsed.lat : DEFAULT_VIEW.lat;
-    const lon = typeof parsed.lon === 'number' ? parsed.lon : DEFAULT_VIEW.lon;
-    const zoom =
-      typeof parsed.zoom === 'number' ? parsed.zoom : DEFAULT_VIEW.zoom;
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(zoom)) {
-      return DEFAULT_VIEW;
+    const lat = typeof parsed.lat === 'number' ? parsed.lat : DEFAULT_POV.lat;
+    const lng = typeof parsed.lng === 'number' ? parsed.lng : DEFAULT_POV.lng;
+    const altitude =
+      typeof parsed.altitude === 'number'
+        ? parsed.altitude
+        : DEFAULT_POV.altitude;
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      !Number.isFinite(altitude)
+    ) {
+      return DEFAULT_POV;
     }
-    return { lat, lon, zoom };
+    return { lat, lng, altitude };
   } catch {
-    return DEFAULT_VIEW;
+    return DEFAULT_POV;
   }
 }
 
-function saveView(map: LeafletMap) {
+function saveView(globe: GlobeInstance) {
   try {
-    const c = map.getCenter();
+    const pov = globe.pointOfView() as {
+      lat: number;
+      lng: number;
+      altitude: number;
+    };
     sessionStorage.setItem(
       VIEW_KEY,
-      JSON.stringify({ lat: c.lat, lon: c.lng, zoom: map.getZoom() }),
+      JSON.stringify({
+        lat: pov.lat,
+        lng: pov.lng,
+        altitude: pov.altitude,
+      }),
     );
   } catch {
     /* ignore */
@@ -89,6 +107,12 @@ function saveView(map: LeafletMap) {
 
 function formatPendingLabel(lat: number, lon: number): string {
   return `${lat.toFixed(3)}°, ${lon.toFixed(3)}°`;
+}
+
+function fitPinsAltitude(count: number): number {
+  if (count <= 1) return 1.15;
+  if (count <= 4) return 1.55;
+  return 2.0;
 }
 
 export function MondePage({ journal }: Props) {
@@ -128,9 +152,9 @@ export function MondePage({ journal }: Props) {
     Record<string, GeocodeOutcome | undefined>
   >({});
   const [retryTick, setRetryTick] = useState(0);
-  const [mapReady, setMapReady] = useState(false);
-  const [mapError, setMapError] = useState(false);
-  const [tilesFailed, setTilesFailed] = useState(false);
+  const [globeReady, setGlobeReady] = useState(false);
+  const [globeError, setGlobeError] = useState(false);
+  const [webglMissing, setWebglMissing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [placePhase, setPlacePhase] = useState<PlacePhase>('idle');
   const [pending, setPending] = useState<{
@@ -142,14 +166,14 @@ export function MondePage({ journal }: Props) {
   const [placeDayId, setPlaceDayId] = useState(journal.today);
   const [placeMsg, setPlaceMsg] = useState<string | null>(null);
 
-  const mapElRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
-  const tilesRef = useRef<LeafletTileLayer | null>(null);
-  const markersRef = useRef<Map<string, LeafletMarker>>(new Map());
-  const LRef = useRef<LeafletNamespace | null>(null);
+  const globeElRef = useRef<HTMLDivElement>(null);
+  const globeRef = useRef<GlobeInstance | null>(null);
   const placePhaseRef = useRef(placePhase);
   const fittedRef = useRef(false);
   const geocodeRef = useRef(geocodeMap);
+  const selectedIdRef = useRef(selectedId);
+  const pendingRef = useRef(pending);
+  const pinsRef = useRef<Pin[]>([]);
 
   useEffect(() => {
     placePhaseRef.current = placePhase;
@@ -158,6 +182,14 @@ export function MondePage({ journal }: Props) {
   useEffect(() => {
     geocodeRef.current = geocodeMap;
   }, [geocodeMap]);
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
 
   useEffect(() => {
     const onOnline = () => setRetryTick((n) => n + 1);
@@ -201,78 +233,204 @@ export function MondePage({ journal }: Props) {
     return Array.from(byId.values());
   }, [storedPins, needGeocode, geocodeMap]);
 
+  useEffect(() => {
+    pinsRef.current = pins;
+  }, [pins]);
+
   const selectedPin = selectedId
     ? (pins.find((p) => p.day.id === selectedId) ?? null)
     : null;
 
-  // Init map once
+  const buildPoints = (
+    pinList: Pin[],
+    sel: string | null,
+    pend: { lat: number; lon: number } | null,
+  ): GlobePoint[] => {
+    const pts: GlobePoint[] = pinList.map((p) => ({
+      id: p.day.id,
+      lat: p.lat,
+      lng: p.lon,
+      label: p.day.title.trim() || 'Sans titre',
+      kind: 'pin' as const,
+      active: sel === p.day.id,
+    }));
+    if (pend) {
+      pts.push({
+        id: PENDING_ID,
+        lat: pend.lat,
+        lng: pend.lon,
+        label: 'Nouveau souvenir',
+        kind: 'pending',
+        active: true,
+      });
+    }
+    return pts;
+  };
+
+  const applyPoints = (globe: GlobeInstance) => {
+    globe.pointsData(
+      buildPoints(pinsRef.current, selectedIdRef.current, pendingRef.current),
+    );
+  };
+
+  // Init globe once
   useEffect(() => {
-    const el = mapElRef.current;
+    const el = globeElRef.current;
     if (!el) return;
     let cancelled = false;
     let resizeObs: ResizeObserver | null = null;
-    let tileErrorCount = 0;
-    const onWinResize = () => mapRef.current?.invalidateSize();
+    let saveTimer: number | null = null;
 
-    const onMapClick = (e?: { latlng?: { lat: number; lng: number } }) => {
-      if (placePhaseRef.current !== 'picking') return;
-      const ll = e?.latlng;
-      if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)) return;
-      setPending({ lat: ll.lat, lon: ll.lng });
-      setPlacePhase('confirm');
-      setPlaceDayId(journal.today);
-      setPlaceMsg(null);
+    const syncSize = () => {
+      const g = globeRef.current;
+      if (!g || !el) return;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) {
+        g.width(w);
+        g.height(h);
+      }
     };
 
-    const onMoveEnd = () => {
-      if (mapRef.current) saveView(mapRef.current);
-    };
+    const onWinResize = () => syncSize();
 
     (async () => {
       try {
-        const L = await loadLeaflet();
+        if (!isWebGLAvailable()) {
+          if (!cancelled) {
+            setWebglMissing(true);
+            setGlobeError(true);
+            setGlobeReady(false);
+          }
+          return;
+        }
+        const Globe = await loadGlobe();
         if (cancelled) return;
-        LRef.current = L;
+
+        const theme = journal.theme;
+        const atm = GLOBE_ATMOSPHERE[theme];
         const saved = readSavedView();
-        const map = L.map(el, {
-          zoomControl: false,
-          attributionControl: true,
-          scrollWheelZoom: true,
-          worldCopyJump: true,
-        }).setView([saved.lat, saved.lon], saved.zoom);
 
-        L.control.zoom({ position: 'topright' }).addTo(map);
+        const globe = new Globe(el, {
+          rendererConfig: {
+            antialias: true,
+            alpha: false,
+            powerPreference: 'high-performance',
+          },
+        })
+          .backgroundColor(GLOBE_BG[theme])
+          .globeImageUrl(GLOBE_EARTH_URL[theme])
+          .showAtmosphere(true)
+          .atmosphereColor(atm.color)
+          .atmosphereAltitude(atm.altitude)
+          .pointsMerge(false)
+          .pointLat('lat')
+          .pointLng('lng')
+          .pointAltitude((d) => {
+            const p = d as GlobePoint;
+            if (p.kind === 'pending') return 0.018;
+            return p.active ? 0.022 : 0.012;
+          })
+          .pointRadius((d) => {
+            const p = d as GlobePoint;
+            if (p.kind === 'pending') return 0.55;
+            return p.active ? 0.62 : 0.42;
+          })
+          .pointColor((d) => {
+            const p = d as GlobePoint;
+            if (p.kind === 'pending') return GLOBE_PIN.pending;
+            return p.active ? GLOBE_PIN.active : GLOBE_PIN.idle;
+          })
+          .pointLabel((d) => (d as GlobePoint).label)
+          .onPointClick((point) => {
+            const p = point as GlobePoint;
+            if (!p || p.kind === 'pending') return;
+            setSelectedId(p.id);
+            if (placePhaseRef.current === 'picking') {
+              setPlacePhase('idle');
+              setPending(null);
+            }
+          })
+          .onGlobeClick(({ lat, lng }) => {
+            if (placePhaseRef.current !== 'picking') return;
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            setPending({ lat, lon: lng });
+            setPlacePhase('confirm');
+            setPlaceDayId(journal.today);
+            setPlaceMsg(null);
+            setSelectedId(null);
+          });
 
-        const tiles = L.tileLayer(CARTO_TILES[journal.theme], {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · <a href="https://carto.com/">CARTO</a>',
-          subdomains: 'abcd',
-          maxZoom: 19,
-        });
-        tiles.on('tileerror', () => {
-          tileErrorCount += 1;
-          if (tileErrorCount >= 6) setTilesFailed(true);
-        });
-        tiles.addTo(map);
-        tilesRef.current = tiles;
+        const controls = globe.controls();
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.25;
+        controls.enableZoom = true;
+        controls.minDistance = 120;
+        controls.maxDistance = 500;
 
-        map.on('click', onMapClick);
-        map.on('contextmenu', onMapClick);
-        map.on('moveend', onMoveEnd);
+        globe.pointOfView(saved, 0);
+        syncSize();
 
-        mapRef.current = map;
-        setMapReady(true);
-        setMapError(false);
-        setTilesFailed(false);
-        requestAnimationFrame(() => map.invalidateSize());
-        resizeObs = new ResizeObserver(() => map.invalidateSize());
+        // Pause auto-rotate while interacting / placing
+        const canvas = el.querySelector('canvas');
+        const stopSpin = () => {
+          controls.autoRotate = false;
+        };
+        const maybeResume = () => {
+          if (placePhaseRef.current === 'idle' && !selectedIdRef.current) {
+            window.setTimeout(() => {
+              if (placePhaseRef.current === 'idle' && !selectedIdRef.current) {
+                controls.autoRotate = true;
+              }
+            }, 4200);
+          }
+        };
+        canvas?.addEventListener('pointerdown', stopSpin);
+        canvas?.addEventListener('pointerup', maybeResume);
+
+        const onControlsChange = () => {
+          if (saveTimer) window.clearTimeout(saveTimer);
+          saveTimer = window.setTimeout(() => {
+            if (globeRef.current) saveView(globeRef.current);
+          }, 350);
+        };
+        // three.js OrbitControls emits 'change'
+        (
+          controls as unknown as {
+            addEventListener?: (t: string, fn: () => void) => void;
+          }
+        ).addEventListener?.('change', onControlsChange);
+
+        globeRef.current = globe;
+        applyPoints(globe);
+        setGlobeReady(true);
+        setGlobeError(false);
+        setWebglMissing(false);
+
+        resizeObs = new ResizeObserver(() => syncSize());
         resizeObs.observe(el);
         window.addEventListener('resize', onWinResize);
         window.addEventListener('orientationchange', onWinResize);
+
+        // stash listeners for cleanup
+        (
+          el as HTMLDivElement & {
+            __sillageGlobeCleanup?: () => void;
+          }
+        ).__sillageGlobeCleanup = () => {
+          canvas?.removeEventListener('pointerdown', stopSpin);
+          canvas?.removeEventListener('pointerup', maybeResume);
+          (
+            controls as unknown as {
+              removeEventListener?: (t: string, fn: () => void) => void;
+            }
+          ).removeEventListener?.('change', onControlsChange);
+        };
       } catch {
         if (!cancelled) {
-          setMapError(true);
-          setMapReady(false);
+          setGlobeError(true);
+          setGlobeReady(false);
+          if (!isWebGLAvailable()) setWebglMissing(true);
         }
       }
     })();
@@ -282,28 +440,50 @@ export function MondePage({ journal }: Props) {
       resizeObs?.disconnect();
       window.removeEventListener('resize', onWinResize);
       window.removeEventListener('orientationchange', onWinResize);
-      markersRef.current.clear();
-      if (mapRef.current) {
-        mapRef.current.off('click', onMapClick);
-        mapRef.current.off('contextmenu', onMapClick);
-        mapRef.current.off('moveend', onMoveEnd);
-        mapRef.current.remove();
-        mapRef.current = null;
-        tilesRef.current = null;
+      if (saveTimer) window.clearTimeout(saveTimer);
+      const cleanup = (
+        el as HTMLDivElement & { __sillageGlobeCleanup?: () => void }
+      ).__sillageGlobeCleanup;
+      cleanup?.();
+      if (globeRef.current) {
+        try {
+          saveView(globeRef.current);
+          globeRef.current._destructor();
+        } catch {
+          /* ignore */
+        }
+        globeRef.current = null;
       }
-      LRef.current = null;
-      setMapReady(false);
+      // clear leftover canvas nodes
+      el.replaceChildren();
+      setGlobeReady(false);
     };
-    // theme handled separately; journal.today only for default day id
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Theme textures / atmosphere
   useEffect(() => {
-    const tiles = tilesRef.current;
-    if (!tiles || !mapReady) return;
-    setTilesFailed(false);
-    tiles.setUrl(CARTO_TILES[journal.theme]);
-  }, [journal.theme, mapReady]);
+    const globe = globeRef.current;
+    if (!globe || !globeReady) return;
+    const atm = GLOBE_ATMOSPHERE[journal.theme];
+    globe
+      .backgroundColor(GLOBE_BG[journal.theme])
+      .globeImageUrl(GLOBE_EARTH_URL[journal.theme])
+      .atmosphereColor(atm.color)
+      .atmosphereAltitude(atm.altitude);
+  }, [journal.theme, globeReady]);
+
+  // Pause auto-rotate while placing or previewing
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe || !globeReady) return;
+    const controls = globe.controls();
+    if (placePhase !== 'idle' || selectedId) {
+      controls.autoRotate = false;
+    } else {
+      controls.autoRotate = true;
+    }
+  }, [placePhase, selectedId, globeReady]);
 
   // Reverse-geocode pending pin label
   useEffect(() => {
@@ -326,85 +506,50 @@ export function MondePage({ journal }: Props) {
     };
   }, [placePhase, pending]);
 
-  // Markers
+  // Sync points + first-fit
   useEffect(() => {
-    const map = mapRef.current;
-    const L = LRef.current;
-    if (!map || !L || !mapReady) return;
-
-    const wanted = new Set(pins.map((p) => p.day.id));
-    for (const [id, marker] of markersRef.current) {
-      if (!wanted.has(id)) {
-        map.removeLayer(marker);
-        markersRef.current.delete(id);
-      }
-    }
-
-    const bounds = L.latLngBounds([]);
-    for (const pin of pins) {
-      const latlng: [number, number] = [pin.lat, pin.lon];
-      bounds.extend(latlng);
-      const active = selectedId === pin.day.id;
-      const title = pin.day.title.trim() || 'Sans titre';
-      const prev = markersRef.current.get(pin.day.id);
-      if (prev) {
-        prev.setLatLng(latlng);
-        prev.setIcon(pinIcon(L, active));
-      } else {
-        const marker = L.marker(latlng, {
-          icon: pinIcon(L, active),
-          title,
-          riseOnHover: true,
-        });
-        marker.on('click', () => {
-          setSelectedId(pin.day.id);
-          if (placePhaseRef.current === 'picking') {
-            setPlacePhase('idle');
-            setPending(null);
-          }
-        });
-        marker.addTo(map);
-        markersRef.current.set(pin.day.id, marker);
-      }
-    }
+    const globe = globeRef.current;
+    if (!globe || !globeReady) return;
+    applyPoints(globe);
 
     if (pins.length > 0 && !fittedRef.current) {
       fittedRef.current = true;
       const saved = readSavedView();
-      // Only auto-fit if still at default world view (first visit this session)
       const atDefault =
-        Math.abs(saved.lat - DEFAULT_VIEW.lat) < 0.01 &&
-        Math.abs(saved.lon - DEFAULT_VIEW.lon) < 0.01 &&
-        saved.zoom <= DEFAULT_VIEW.zoom + 0.5;
+        Math.abs(saved.lat - DEFAULT_POV.lat) < 0.01 &&
+        Math.abs(saved.lng - DEFAULT_POV.lng) < 0.01 &&
+        Math.abs(saved.altitude - DEFAULT_POV.altitude) < 0.15;
       if (atDefault) {
         if (pins.length === 1) {
-          map.setView([pins[0].lat, pins[0].lon], 11);
-        } else if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [48, 48], maxZoom: 12 });
+          globe.pointOfView(
+            { lat: pins[0].lat, lng: pins[0].lon, altitude: 0.85 },
+            900,
+          );
+        } else {
+          const midLat =
+            pins.reduce((s, p) => s + p.lat, 0) / pins.length;
+          const midLng =
+            pins.reduce((s, p) => s + p.lon, 0) / pins.length;
+          globe.pointOfView(
+            {
+              lat: midLat,
+              lng: midLng,
+              altitude: fitPinsAltitude(pins.length),
+            },
+            900,
+          );
         }
       }
     }
-
-    requestAnimationFrame(() => map.invalidateSize());
-  }, [pins, mapReady, selectedId]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const L = LRef.current;
-    if (!map || !L || !mapReady) return;
-    for (const [id, marker] of markersRef.current) {
-      const active = selectedId === id;
-      const elPin = marker.getElement?.();
-      if (elPin) elPin.classList.toggle('active', active);
-      else marker.setIcon(pinIcon(L, active));
-    }
-  }, [selectedId, mapReady]);
+  }, [pins, globeReady, selectedId, pending]);
 
   const startPlace = () => {
     setSelectedId(null);
     setPending(null);
     setPlaceMsg(null);
     setPlacePhase('picking');
+    const globe = globeRef.current;
+    if (globe) globe.controls().autoRotate = false;
   };
 
   const cancelPlace = () => {
@@ -429,11 +574,12 @@ export function MondePage({ journal }: Props) {
     setPlacePhase('idle');
     setPending(null);
     setPlaceMsg('Souvenir posé.');
-    const map = mapRef.current;
-    if (map) {
-      map.flyTo([pending.lat, pending.lon], Math.max(map.getZoom(), 12), {
-        duration: 0.5,
-      });
+    const globe = globeRef.current;
+    if (globe) {
+      globe.pointOfView(
+        { lat: pending.lat, lng: pending.lon, altitude: 0.75 },
+        700,
+      );
     }
   };
 
@@ -452,13 +598,13 @@ export function MondePage({ journal }: Props) {
   }, [days, journal.today]);
 
   const emptyPins = pins.length === 0;
-  const statusLine = mapError
-    ? 'La carte dort hors ligne — le reste du journal reste là.'
-    : tilesFailed
-      ? 'Les tuiles peinent — réessaie avec le réseau.'
-      : placePhase === 'picking'
-        ? 'Touche la carte pour poser un souvenir.'
-        : placeMsg;
+  const statusLine = globeError
+    ? webglMissing
+      ? 'Cet appareil ne peut pas dessiner le globe.'
+      : 'Le globe dort hors ligne — le reste du journal reste là.'
+    : placePhase === 'picking'
+      ? 'Touche le globe pour poser un souvenir.'
+      : placeMsg;
 
   return (
     <div
@@ -469,45 +615,60 @@ export function MondePage({ journal }: Props) {
           <h1 className="monde-title">Monde</h1>
           <p className="monde-sub">
             {emptyPins
-              ? 'Des souvenirs sur la carte'
+              ? 'Des souvenirs sur la Terre'
               : pins.length === 1
                 ? 'Un souvenir posé'
                 : `${pins.length} souvenirs posés`}
           </p>
         </div>
-        <button
-          type="button"
-          className={`monde-place-btn${placePhase !== 'idle' ? ' active' : ''}`}
-          onClick={() =>
-            placePhase === 'idle' ? startPlace() : cancelPlace()
-          }
-          aria-pressed={placePhase !== 'idle'}
-        >
-          {placePhase === 'idle' ? 'Poser un souvenir' : 'Annuler'}
-        </button>
+        {!globeError ? (
+          <button
+            type="button"
+            className={`monde-place-btn${placePhase !== 'idle' ? ' active' : ''}`}
+            onClick={() =>
+              placePhase === 'idle' ? startPlace() : cancelPlace()
+            }
+            aria-pressed={placePhase !== 'idle'}
+          >
+            {placePhase === 'idle' ? 'Poser un souvenir' : 'Annuler'}
+          </button>
+        ) : null}
       </header>
 
       <div className="monde-map-wrap" aria-busy={labelBusy || undefined}>
-        {mapError ? (
-          <p className="monde-map-fallback" role="status">
-            La carte a besoin du réseau. Tes jours, eux, restent.
-          </p>
+        {globeError ? (
+          <div className="monde-map-fallback" role="status">
+            <p>
+              {webglMissing
+                ? 'Le globe a besoin de WebGL — indisponible ici.'
+                : 'Le globe a besoin du réseau. Tes jours, eux, restent.'}
+            </p>
+            <Link to="/lieux" className="monde-lieux-link">
+              Voir la carte des lieux
+            </Link>
+          </div>
         ) : (
           <div
-            ref={mapElRef}
-            className="monde-map"
+            ref={globeElRef}
+            className="monde-map monde-globe"
             role="application"
-            aria-label="Carte du monde des souvenirs"
+            aria-label="Globe des souvenirs"
           />
         )}
 
-        {emptyPins && !mapError && placePhase === 'idle' ? (
+        {!globeError && globeReady && placePhase === 'idle' && !selectedPin ? (
+          <p className="monde-hint" aria-hidden="true">
+            Glisse pour tourner · pince pour zoomer
+          </p>
+        ) : null}
+
+        {emptyPins && !globeError && placePhase === 'idle' ? (
           <div className="monde-empty" role="status">
             <p className="monde-empty-quote">
               « Le monde attend la première trace. »
             </p>
             <p className="muted monde-empty-hint">
-              Écris un lieu sur un jour, ou pose un souvenir ici — sur la carte.
+              Écris un lieu sur un jour, ou pose un souvenir ici — sur le globe.
             </p>
             <Link to="/lieux" className="monde-lieux-link">
               Voir les lieux du Tiroir
@@ -556,7 +717,12 @@ export function MondePage({ journal }: Props) {
       ) : null}
 
       {placePhase === 'confirm' && pending ? (
-        <div className="monde-place-sheet" role="dialog" aria-modal="true" aria-label="Poser un souvenir">
+        <div
+          className="monde-place-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Poser un souvenir"
+        >
           <p className="monde-place-sheet-label">
             {labelBusy ? 'Le lieu se nomme…' : pendingLabel}
           </p>

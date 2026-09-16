@@ -2552,7 +2552,7 @@ img {
 }
 
 
-/* ——— Monde (world map tab) ——— */
+/* ——— Monde (3D globe tab) ——— */
 .monde-page {
   position: relative;
   margin: calc(-1 * max(16px, env(safe-area-inset-top, 0px))) -18px -20px;
@@ -2629,27 +2629,60 @@ img {
   background: var(--map-bg);
 }
 
-.monde-map {
+.monde-map,
+.monde-globe {
   width: 100%;
   height: 100%;
   z-index: 0;
   background: var(--map-bg);
+  touch-action: none;
 }
 
-.monde-page.is-placing .monde-map {
+.monde-globe canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
+.monde-page.is-placing .monde-globe {
   cursor: crosshair;
 }
 
 .monde-map-fallback {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   height: 100%;
   margin: 0;
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
   font-size: 0.92rem;
+}
+
+.monde-map-fallback p {
+  margin: 0;
+  max-width: 22rem;
+}
+
+.monde-hint {
+  position: absolute;
+  left: 50%;
+  top: 58px;
+  transform: translateX(-50%);
+  z-index: 2;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--leaflet-attr-bg);
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .monde-empty {
@@ -2705,29 +2738,6 @@ img {
   font-size: 0.78rem;
   text-align: center;
   pointer-events: none;
-}
-
-.monde-pin {
-  background: transparent !important;
-  border: none !important;
-}
-
-.monde-pin-dot {
-  display: block;
-  width: 14px;
-  height: 14px;
-  margin: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow:
-    0 0 0 2px var(--pin-ring),
-    0 2px 8px rgba(0, 0, 0, 0.35);
-}
-
-.monde-pin.active .monde-pin-dot,
-.monde-pin .leaflet-marker-icon.active .monde-pin-dot {
-  background: var(--accent-bright);
-  transform: scale(1.15);
 }
 
 .monde-preview {
@@ -2853,42 +2863,6 @@ img {
   font-family: var(--sans);
   font-size: 0.85rem;
   font-weight: 500;
-}
-
-.monde-map .leaflet-control-attribution {
-  background: var(--leaflet-attr-bg) !important;
-  color: var(--text-faint);
-  font-size: 9px;
-  max-width: 55%;
-}
-
-.monde-map .leaflet-control-attribution a {
-  color: var(--text-muted);
-}
-
-.monde-map .leaflet-control-zoom {
-  border: 1px solid var(--border) !important;
-  border-radius: 10px !important;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-
-.monde-map .leaflet-control-zoom a {
-  width: 32px !important;
-  height: 32px !important;
-  line-height: 32px !important;
-  background: var(--leaflet-ctrl-bg) !important;
-  color: var(--cream) !important;
-  border-bottom: 1px solid var(--border) !important;
-}
-
-.monde-map .leaflet-control-zoom a:last-child {
-  border-bottom: none !important;
-}
-
-.monde-map .leaflet-control-zoom a:hover,
-.monde-map .leaflet-control-zoom a:focus {
-  background: var(--leaflet-ctrl-hover) !important;
 }
 
 .lieux-monde-link {
