@@ -6,12 +6,19 @@ export interface GeocodeHit {
   displayName?: string;
 }
 
+/** ok = placed; miss = known empty result (cached); unavailable = network/HTTP (not cached). */
+export type GeocodeOutcome =
+  | { status: 'ok'; hit: GeocodeHit }
+  | { status: 'miss' }
+  | { status: 'unavailable' };
+
 type CacheEntry =
   | { status: 'ok'; lat: number; lon: number; displayName?: string; at: number }
   | { status: 'miss'; at: number };
 
 const CACHE_KEY = 'sillage-geocode-v1';
-const USER_AGENT = 'Sillage/1.0 (personal journal PWA; local-only; github.com/followlapinblanc7-cell/Sillage)';
+const USER_AGENT =
+  'Sillage/1.0 (personal journal PWA; local-only; github.com/followlapinblanc7-cell/Sillage)';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 /** Nominatim usage policy: ≤1 req/s */
 const MIN_INTERVAL_MS = 1100;
@@ -48,14 +55,17 @@ function writeCache(cache: Record<string, CacheEntry>) {
   }
 }
 
-function fromCache(key: string): GeocodeHit | null | undefined {
+function fromCache(key: string): GeocodeOutcome | undefined {
   const cache = readCache();
   const entry = cache[key];
   if (!entry) return undefined;
   if (entry.status === 'ok') {
-    return { lat: entry.lat, lon: entry.lon, displayName: entry.displayName };
+    return {
+      status: 'ok',
+      hit: { lat: entry.lat, lon: entry.lon, displayName: entry.displayName },
+    };
   }
-  if (Date.now() - entry.at < MISS_TTL_MS) return null;
+  if (Date.now() - entry.at < MISS_TTL_MS) return { status: 'miss' };
   return undefined;
 }
 
@@ -125,32 +135,32 @@ async function fetchNominatim(query: string): Promise<GeocodeHit | null> {
 }
 
 /**
- * Resolve a free-text place. Returns a hit, null on known miss / failure,
- * never throws. Results are cached in localStorage.
- * Network/offline errors are not cached as misses so they can retry later.
+ * Resolve a free-text place. Never throws.
+ * - ok / miss are cached in localStorage
+ * - unavailable (offline, timeout, HTTP) is not cached so a later pass can retry
  */
-export function geocodeLocation(raw: string): Promise<GeocodeHit | null> {
+export function geocodeLocation(raw: string): Promise<GeocodeOutcome> {
   const query = normalizeQuery(raw);
-  if (!query) return Promise.resolve(null);
+  if (!query) return Promise.resolve({ status: 'miss' });
   const key = locationKey(query);
 
   const cached = fromCache(key);
   if (cached !== undefined) return Promise.resolve(cached);
 
-  const job = chain.then(async () => {
+  const job = chain.then(async (): Promise<GeocodeOutcome> => {
     const again = fromCache(key);
     if (again !== undefined) return again;
     try {
       const hit = await fetchNominatim(query);
       if (hit) {
         storeOk(key, hit);
-        return hit;
+        return { status: 'ok', hit };
       }
       storeMiss(key);
-      return null;
+      return { status: 'miss' };
     } catch {
       // Offline, timeout, or HTTP error — leave uncached for a later pass
-      return null;
+      return { status: 'unavailable' };
     }
   });
 

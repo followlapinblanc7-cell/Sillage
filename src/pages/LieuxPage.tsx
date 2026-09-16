@@ -4,7 +4,11 @@ import {
   formatDateShort,
   type JournalApi,
 } from '../hooks/useJournal';
-import { geocodeLocation, type GeocodeHit } from '../lib/geocode';
+import {
+  geocodeLocation,
+  type GeocodeHit,
+  type GeocodeOutcome,
+} from '../lib/geocode';
 import { collectLieux, type LieuGroup } from '../lib/lieux';
 import {
   loadLeaflet,
@@ -17,7 +21,8 @@ interface Props {
   journal: JournalApi;
 }
 
-type CoordMap = Record<string, GeocodeHit | null>;
+/** Coord state: undefined = not yet tried; then an outcome. */
+type CoordMap = Record<string, GeocodeOutcome | undefined>;
 
 function dayCountLabel(n: number): string {
   return n === 1 ? '1 jour' : `${n} jours`;
@@ -44,6 +49,10 @@ function popupHtml(label: string, days: number): string {
   return `<div class="lieux-popup"><p class="lieux-popup-label">${escapeHtml(label)}</p><p class="lieux-popup-meta">${dayCountLabel(days)}</p></div>`;
 }
 
+function hitOf(entry: GeocodeOutcome | undefined): GeocodeHit | null {
+  return entry?.status === 'ok' ? entry.hit : null;
+}
+
 export function LieuxPage({ journal }: Props) {
   const lieux = useMemo(
     () => collectLieux(journal.visibleDays),
@@ -58,6 +67,7 @@ export function LieuxPage({ journal }: Props) {
   const [tilesFailed, setTilesFailed] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeDone, setGeocodeDone] = useState(0);
+  const [retryTick, setRetryTick] = useState(0);
 
   const mapElRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -65,9 +75,12 @@ export function LieuxPage({ journal }: Props) {
   const LRef = useRef<LeafletNamespace | null>(null);
   const lieuxRef = useRef(lieux);
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const daysSectionRef = useRef<HTMLElement>(null);
   const selectedKeyRef = useRef<string | null>(null);
   const lastPinCountRef = useRef(0);
   const skipNextFlyRef = useRef(false);
+  const flownForKeyRef = useRef<string | null>(null);
+  const coordsRef = useRef(coords);
 
   useEffect(() => {
     lieuxRef.current = lieux;
@@ -76,6 +89,17 @@ export function LieuxPage({ journal }: Props) {
   useEffect(() => {
     selectedKeyRef.current = selectedKey;
   }, [selectedKey]);
+
+  useEffect(() => {
+    coordsRef.current = coords;
+  }, [coords]);
+
+  // Soft-fail retries when the network comes back
+  useEffect(() => {
+    const onOnline = () => setRetryTick((n) => n + 1);
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, []);
 
   // Geocode unique labels sequentially (cache-aware, ≤1 req/s)
   useEffect(() => {
@@ -87,19 +111,23 @@ export function LieuxPage({ journal }: Props) {
     }
     let cancelled = false;
     setGeocoding(true);
-    setGeocodeDone(0);
 
     (async () => {
       let done = 0;
       for (const lieu of lieux) {
         if (cancelled) return;
-        const hit = await geocodeLocation(lieu.label);
+        const existing = coordsRef.current[lieu.key];
+        // Skip confirmed ok/miss; retry unavailable (or first pass)
+        if (existing?.status === 'ok' || existing?.status === 'miss') {
+          done += 1;
+          setGeocodeDone(done);
+          continue;
+        }
+        const outcome = await geocodeLocation(lieu.label);
         if (cancelled) return;
         done += 1;
         setGeocodeDone(done);
-        setCoords((prev) =>
-          prev[lieu.key] === hit ? prev : { ...prev, [lieu.key]: hit },
-        );
+        setCoords((prev) => ({ ...prev, [lieu.key]: outcome }));
       }
       if (!cancelled) setGeocoding(false);
     })();
@@ -107,7 +135,7 @@ export function LieuxPage({ journal }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [hasLieux, lieux]);
+  }, [hasLieux, lieux, retryTick]);
 
   // Init Leaflet once when we have lieux
   useEffect(() => {
@@ -137,6 +165,8 @@ export function LieuxPage({ journal }: Props) {
           dragging: finePointer,
           tapTolerance: 18,
         }).setView([46.6, 2.4], 5);
+
+        L.control.zoom({ position: 'topright' }).addTo(map);
 
         const tiles = L.tileLayer(
           'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -185,7 +215,7 @@ export function LieuxPage({ journal }: Props) {
     };
   }, [hasLieux]);
 
-  // Rebuild markers when coords change (not on mere selection)
+  // Upsert markers when coords change (not on mere selection)
   useEffect(() => {
     const map = mapRef.current;
     const L = LRef.current;
@@ -193,7 +223,7 @@ export function LieuxPage({ journal }: Props) {
 
     const currentLieux = lieuxRef.current;
     const wanted = new Set(
-      currentLieux.filter((l) => coords[l.key]).map((l) => l.key),
+      currentLieux.filter((l) => hitOf(coords[l.key])).map((l) => l.key),
     );
 
     for (const [key, marker] of markersRef.current) {
@@ -207,33 +237,31 @@ export function LieuxPage({ journal }: Props) {
     let pinCount = 0;
 
     for (const lieu of currentLieux) {
-      const hit = coords[lieu.key];
+      const hit = hitOf(coords[lieu.key]);
       if (!hit) continue;
       pinCount += 1;
       const latlng: [number, number] = [hit.lat, hit.lon];
       bounds.extend(latlng);
       const active = selectedKeyRef.current === lieu.key;
+      const popup = popupHtml(lieu.label, lieu.days.length);
+      const popupOpts = {
+        className: 'lieux-popup-wrap',
+        closeButton: false,
+        offset: [0, -6],
+      };
 
       const prev = markersRef.current.get(lieu.key);
       if (prev) {
         prev.setLatLng(latlng);
         prev.setIcon(pinIcon(L, active));
-        prev.bindPopup(popupHtml(lieu.label, lieu.days.length), {
-          className: 'lieux-popup-wrap',
-          closeButton: false,
-          offset: [0, -6],
-        });
+        prev.bindPopup(popup, popupOpts);
       } else {
         const marker = L.marker(latlng, {
           icon: pinIcon(L, active),
           title: lieu.label,
           riseOnHover: true,
         });
-        marker.bindPopup(popupHtml(lieu.label, lieu.days.length), {
-          className: 'lieux-popup-wrap',
-          closeButton: false,
-          offset: [0, -6],
-        });
+        marker.bindPopup(popup, popupOpts);
         marker.on('click', () => {
           // Pin tap: select + scroll list; skip fly (already on pin)
           skipNextFlyRef.current = true;
@@ -248,9 +276,9 @@ export function LieuxPage({ journal }: Props) {
     if (pinCount > 0 && pinCount !== lastPinCountRef.current) {
       lastPinCountRef.current = pinCount;
       if (pinCount === 1) {
-        const only = currentLieux.find((l) => coords[l.key]);
-        const hit = only ? coords[only.key] : null;
-        if (hit) map.setView([hit.lat, hit.lon], 11);
+        const only = currentLieux.find((l) => hitOf(coords[l.key]));
+        const onlyHit = only ? hitOf(coords[only.key]) : null;
+        if (onlyHit) map.setView([onlyHit.lat, onlyHit.lon], 11);
       } else if (bounds.isValid()) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
       }
@@ -263,7 +291,7 @@ export function LieuxPage({ journal }: Props) {
     if (!mapReady) lastPinCountRef.current = 0;
   }, [mapReady]);
 
-  // Selection ↔ map: highlight pin, fly/pan, open quiet popup, scroll list
+  // Selection ↔ map: highlight pin in place, fly/pan, open quiet popup
   useEffect(() => {
     const map = mapRef.current;
     const L = LRef.current;
@@ -271,41 +299,47 @@ export function LieuxPage({ journal }: Props) {
 
     for (const [key, marker] of markersRef.current) {
       const active = selectedKey === key;
-      marker.setIcon(pinIcon(L, active));
+      const elPin = marker.getElement?.();
+      if (elPin) elPin.classList.toggle('active', active);
+      else marker.setIcon(pinIcon(L, active));
       if (!active) marker.closePopup();
     }
 
     if (!selectedKey) {
       skipNextFlyRef.current = false;
+      flownForKeyRef.current = null;
+      map.closePopup();
       return;
     }
 
-    const hit = coords[selectedKey];
+    const hit = hitOf(coords[selectedKey]);
     const marker = markersRef.current.get(selectedKey);
     const skipFly = skipNextFlyRef.current;
     skipNextFlyRef.current = false;
 
-    if (hit && marker) {
-      if (!skipFly) {
-        const zoom = Math.max(map.getZoom(), 11);
-        map.flyTo([hit.lat, hit.lon], zoom, { duration: 0.55 });
-      }
-      // Open after a beat so fly doesn't fight the popup
-      const t = window.setTimeout(() => {
-        marker.openPopup();
-        map.invalidateSize();
-      }, skipFly ? 0 : 280);
-      // Scroll list row into view
-      const row = rowRefs.current.get(selectedKey);
-      row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      return () => window.clearTimeout(t);
-    }
-
-    // No pin — still scroll the list row into view
+    // Scroll list row into view (pin → list)
     rowRefs.current.get(selectedKey)?.scrollIntoView({
       behavior: 'smooth',
       block: 'nearest',
     });
+
+    if (!hit || !marker) return;
+
+    const alreadyFlew = flownForKeyRef.current === selectedKey;
+    if (!skipFly && !alreadyFlew) {
+      flownForKeyRef.current = selectedKey;
+      const zoom = Math.max(map.getZoom(), 11);
+      map.flyTo([hit.lat, hit.lon], zoom, { duration: 0.55 });
+    } else if (skipFly) {
+      flownForKeyRef.current = selectedKey;
+    }
+
+    const delay = skipFly || alreadyFlew ? 0 : 280;
+    const t = window.setTimeout(() => {
+      marker.openPopup();
+      map.invalidateSize();
+    }, delay);
+    return () => window.clearTimeout(t);
   }, [selectedKey, mapReady, coords]);
 
   // When the day panel opens, map size may shift — refresh tiles
@@ -315,13 +349,34 @@ export function LieuxPage({ journal }: Props) {
     return () => cancelAnimationFrame(id);
   }, [selectedKey, mapReady]);
 
+  // Gentle scroll to the days panel when a lieu is selected
+  useEffect(() => {
+    if (!selectedKey) return;
+    const id = window.setTimeout(() => {
+      daysSectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, [selectedKey]);
+
   const selected: LieuGroup | null = selectedKey
     ? (lieux.find((l) => l.key === selectedKey) ?? null)
     : null;
 
-  const pinCount = lieux.filter((l) => coords[l.key]).length;
-  const resolvedCount = Object.keys(coords).length;
+  const pinCount = lieux.filter((l) => hitOf(coords[l.key])).length;
+  const resolvedCount = lieux.filter((l) => {
+    const e = coords[l.key];
+    return (
+      e?.status === 'ok' || e?.status === 'miss' || e?.status === 'unavailable'
+    );
+  }).length;
   const pendingCount = Math.max(0, lieux.length - resolvedCount);
+  const softFailCount = lieux.filter(
+    (l) => coords[l.key]?.status === 'unavailable',
+  ).length;
+  const missCount = lieux.filter((l) => coords[l.key]?.status === 'miss').length;
 
   if (!hasLieux) {
     return (
@@ -351,18 +406,24 @@ export function LieuxPage({ journal }: Props) {
   let statusMessage: string | null = null;
   if (!mapError) {
     if (tilesFailed) {
-      statusMessage =
-        'La carte peine à se charger — la liste reste lisible.';
+      statusMessage = 'La carte peine à se charger — la liste reste.';
     } else if (geocoding && pendingCount > 0) {
       statusMessage =
         lieux.length === 1
-          ? 'Le lieu se place…'
-          : `Les lieux se placent… ${geocodeDone} sur ${lieux.length}`;
+          ? 'Placement…'
+          : `Placement… ${geocodeDone}⁄${lieux.length}`;
     } else if (!geocoding && pinCount === 0 && resolvedCount >= lieux.length) {
-      statusMessage =
-        'Ces lieux restent dans la liste — la carte ne les a pas trouvés.';
+      if (softFailCount > 0) {
+        statusMessage = 'Réseau silencieux — on réessaiera. La liste reste.';
+      } else if (missCount > 0) {
+        statusMessage = 'Sans pin pour l’instant — la liste reste là.';
+      }
     }
   }
+
+  const liveAnnouncement = selected
+    ? `Lieu sélectionné : ${selected.label}, ${dayCountLabel(selected.days.length)}`
+    : '';
 
   return (
     <div className="lieux-page">
@@ -371,6 +432,10 @@ export function LieuxPage({ journal }: Props) {
       </Link>
       <h1 className="page-title">Lieux</h1>
       <p className="page-sub">{subCopy}</p>
+
+      <p className="lieux-a11y-live" aria-live="polite">
+        {liveAnnouncement}
+      </p>
 
       <div className="lieux-map-wrap">
         {mapError ? (
@@ -394,9 +459,12 @@ export function LieuxPage({ journal }: Props) {
 
       <ul className="lieux-list" aria-label="Liste des lieux gardés">
         {lieux.map((lieu) => {
-          const hasPin = !!coords[lieu.key];
-          const knownMiss = coords[lieu.key] === null;
+          const entry = coords[lieu.key];
+          const hasPin = entry?.status === 'ok';
+          const knownMiss = entry?.status === 'miss';
+          const softFail = entry?.status === 'unavailable';
           const isSelected = selectedKey === lieu.key;
+          const placing = geocoding && entry === undefined;
           return (
             <li key={lieu.key}>
               <button
@@ -416,15 +484,16 @@ export function LieuxPage({ journal }: Props) {
                 aria-expanded={isSelected}
               >
                 <span
-                  className={`lieux-row-pin${hasPin ? ' on' : ''}${isSelected ? ' selected' : ''}`}
+                  className={`lieux-row-pin${hasPin ? ' on' : ''}${isSelected ? ' selected' : ''}${placing ? ' placing' : ''}`}
                   aria-hidden="true"
                 />
                 <span className="lieux-row-text">
                   <span className="lieux-row-label">{lieu.label}</span>
                   <span className="lieux-row-meta">
                     {dayCountLabel(lieu.days.length)}
-                    {knownMiss ? ' · hors carte' : ''}
-                    {!hasPin && !knownMiss && geocoding ? ' · …' : ''}
+                    {knownMiss ? ' · sans pin' : ''}
+                    {softFail ? ' · à revoir' : ''}
+                    {placing ? ' · placement…' : ''}
                   </span>
                 </span>
                 <span className="chev" aria-hidden="true">
@@ -438,6 +507,7 @@ export function LieuxPage({ journal }: Props) {
 
       {selected ? (
         <section
+          ref={daysSectionRef}
           className="lieux-days"
           aria-label={`Jours à ${selected.label}`}
         >
