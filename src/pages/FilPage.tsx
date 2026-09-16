@@ -1,12 +1,25 @@
+import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { BrandHeader } from '../components/BrandHeader';
 import { DayCard } from '../components/DayCard';
 import { SampleBanner } from '../components/SampleBanner';
 import { WeekStrip } from '../components/WeekStrip';
-import { type JournalApi } from '../hooks/useJournal';
+import {
+  coverPhoto,
+  formatDateShort,
+  pickTraceDay,
+  type JournalApi,
+} from '../hooks/useJournal';
 
 interface Props {
   journal: JournalApi;
+}
+
+function oneLineExcerpt(text: string, max = 90): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, max).trimEnd()}…`;
 }
 
 export function FilPage({ journal }: Props) {
@@ -20,6 +33,11 @@ export function FilPage({ journal }: Props) {
     eveningHour,
     eveningDismissedOn,
     dismissEveningReminder,
+    traceDayId,
+    traceShownOn,
+    traceDismissedOn,
+    dismissTrace,
+    ensureTraceDay,
   } = journal;
 
   const contentDays = visibleDays;
@@ -39,6 +57,27 @@ export function FilPage({ journal }: Props) {
     !hasToday &&
     eveningDismissedOn !== today;
 
+  const traceDay = useMemo(() => {
+    if (contentDays.length === 0) return null;
+    if (older.length === 0) return null;
+    if (traceDismissedOn === today) return null;
+    return pickTraceDay(contentDays, today, {
+      storedDayId: traceDayId,
+      storedShownOn: traceShownOn,
+    });
+  }, [
+    contentDays,
+    older.length,
+    today,
+    traceDayId,
+    traceShownOn,
+    traceDismissedOn,
+  ]);
+
+  useEffect(() => {
+    if (traceDay) ensureTraceDay(traceDay.id);
+  }, [traceDay, ensureTraceDay]);
+
   if (contentDays.length === 0) {
     return (
       <div>
@@ -46,11 +85,11 @@ export function FilPage({ journal }: Props) {
         {showEveningBanner ? (
           <div className="evening-banner" role="status">
             <div>
-              <strong>Et si tu écrivais aujourd&apos;hui ?</strong>
+              <strong>Et si tu gardais un peu d&apos;aujourd&apos;hui ?</strong>
               Un geste discret, rien d&apos;obligatoire.
             </div>
             <div className="evening-banner-actions">
-              <Link to={`/jour/${today}`}>Écrire</Link>
+              <Link to={`/jour/${today}`}>Garder</Link>
               <button
                 type="button"
                 onClick={() => dismissEveningReminder(today)}
@@ -65,15 +104,21 @@ export function FilPage({ journal }: Props) {
             « Rien n&apos;est trop petit pour rester ici. »
           </p>
           <Link to={`/jour/${today}`} className="btn-primary">
-            Écrire aujourd&apos;hui
+            Garder aujourd&apos;hui
           </Link>
           <p className="empty-hint">
-            « Titre, histoire, puis le reste si tu veux. »
+            « Titre, souvenir, puis le reste si tu veux. »
           </p>
         </div>
       </div>
     );
   }
+
+  const traceThumb = traceDay ? coverPhoto(traceDay) : null;
+  const traceTitle = traceDay
+    ? traceDay.title.trim() || 'Sans titre'
+    : '';
+  const traceExcerpt = traceDay ? oneLineExcerpt(traceDay.story) : '';
 
   return (
     <div>
@@ -82,11 +127,11 @@ export function FilPage({ journal }: Props) {
       {showEveningBanner ? (
         <div className="evening-banner" role="status">
           <div>
-            <strong>Et si tu écrivais aujourd&apos;hui ?</strong>
+            <strong>Et si tu gardais un peu d&apos;aujourd&apos;hui ?</strong>
             Un geste discret, rien d&apos;obligatoire.
           </div>
           <div className="evening-banner-actions">
-            <Link to={`/jour/${today}`}>Écrire</Link>
+            <Link to={`/jour/${today}`}>Garder</Link>
             <button
               type="button"
               onClick={() => dismissEveningReminder(today)}
@@ -99,6 +144,36 @@ export function FilPage({ journal }: Props) {
 
       <WeekStrip today={today} daysById={state.days} />
 
+      {traceDay ? (
+        <div className="trace-card" role="complementary" aria-label="Une trace">
+          <Link to={`/jour/${traceDay.id}`} className="trace-card-main">
+            {traceThumb ? (
+              <img
+                className="trace-card-thumb"
+                src={traceThumb}
+                alt=""
+                loading="lazy"
+              />
+            ) : null}
+            <div className="trace-card-body">
+              <p className="trace-card-eyebrow">Une trace</p>
+              <p className="trace-card-date">{formatDateShort(traceDay.id)}</p>
+              <h3 className="trace-card-title">{traceTitle}</h3>
+              {traceExcerpt ? (
+                <p className="trace-card-excerpt">{traceExcerpt}</p>
+              ) : null}
+            </div>
+          </Link>
+          <button
+            type="button"
+            className="trace-card-dismiss"
+            onClick={() => dismissTrace(today)}
+          >
+            Plus tard
+          </button>
+        </div>
+      ) : null}
+
       {hasToday && todayEntry ? (
         <>
           <div className="section-label">Aujourd&apos;hui</div>
@@ -107,7 +182,7 @@ export function FilPage({ journal }: Props) {
       ) : (
         <div style={{ marginBottom: 16 }}>
           <Link to={`/jour/${today}`} className="btn-primary">
-            Écrire aujourd&apos;hui
+            Garder aujourd&apos;hui
           </Link>
         </div>
       )}

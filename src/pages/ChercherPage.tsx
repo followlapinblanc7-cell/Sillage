@@ -34,7 +34,8 @@ export function ChercherPage({ journal }: Props) {
     <div className="chercher-page">
       <header className="chercher-header">
         <p className="section-label chercher-eyebrow">Chercher</p>
-        <h1 className="page-title">Retrouver un jour</h1>
+        <h1 className="page-title">Retrouver un souvenir</h1>
+        <p className="page-sub chercher-sub">Un jour que tu as gardé</p>
       </header>
 
       <input
@@ -43,7 +44,7 @@ export function ChercherPage({ journal }: Props) {
         placeholder="Titre, lieu, étiquette, un mot…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        aria-label="Rechercher un jour"
+        aria-label="Rechercher un souvenir"
       />
 
       <div

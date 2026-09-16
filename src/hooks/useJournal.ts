@@ -86,6 +86,9 @@ function loadState(): JournalState {
           eveningDismissedOn: parsed.eveningDismissedOn,
           photosInIdb: parsed.photosInIdb,
           coffrePin: parsed.coffrePin ?? null,
+          traceDayId: parsed.traceDayId,
+          traceShownOn: parsed.traceShownOn,
+          traceDismissedOn: parsed.traceDismissedOn,
         };
       }
     }
@@ -268,6 +271,9 @@ async function prepareImportedState(
     eveningDismissedOn: next.eveningDismissedOn,
     photosInIdb: true,
     coffrePin: next.coffrePin ?? null,
+    traceDayId: next.traceDayId,
+    traceShownOn: next.traceShownOn,
+    traceDismissedOn: next.traceDismissedOn,
   };
 }
 
@@ -525,6 +531,31 @@ export function useJournal() {
     }));
   }, []);
 
+  const dismissTrace = useCallback((dateId: string) => {
+    setState((prev) => ({
+      ...prev,
+      traceDismissedOn: dateId,
+    }));
+  }, []);
+
+  /** Persist today's chosen trace day when it changes (stable until tomorrow). */
+  const ensureTraceDay = useCallback(
+    (dayId: string | null) => {
+      if (!dayId) return;
+      setState((prev) => {
+        if (prev.traceShownOn === today && prev.traceDayId === dayId) {
+          return prev;
+        }
+        return {
+          ...prev,
+          traceDayId: dayId,
+          traceShownOn: today,
+        };
+      });
+    },
+    [today],
+  );
+
   const search = useCallback(
     (q: string, moodFilter?: MoodId | null, tagFilter?: string | null) => {
       const query = q.trim().toLowerCase();
@@ -731,6 +762,11 @@ export function useJournal() {
     setEveningReminder,
     setEveningHour,
     dismissEveningReminder,
+    traceDayId: state.traceDayId,
+    traceShownOn: state.traceShownOn,
+    traceDismissedOn: state.traceDismissedOn,
+    dismissTrace,
+    ensureTraceDay,
     exportBackup,
     importBackup,
     hasCoffrePin,
@@ -752,6 +788,47 @@ export function hasContent(d: DayEntry): boolean {
     (d.tags && d.tags.length) ||
     d.photos.length
   );
+}
+
+/** Stable hash for calendar-day pick (no reshuffle on re-render). */
+function hashPick(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/**
+ * Pick one past non-private day with content for « Une trace ».
+ * Prefers days with photos. Stable for `today` + candidate set.
+ * Reuses `storedDayId` when still eligible and shown today.
+ */
+export function pickTraceDay(
+  days: DayEntry[],
+  today: string,
+  opts?: { storedDayId?: string; storedShownOn?: string },
+): DayEntry | null {
+  const eligible = days.filter(
+    (d) => d.id !== today && !d.private && hasContent(d),
+  );
+  if (eligible.length === 0) return null;
+
+  if (
+    opts?.storedShownOn === today &&
+    opts.storedDayId &&
+    eligible.some((d) => d.id === opts.storedDayId)
+  ) {
+    return eligible.find((d) => d.id === opts.storedDayId) ?? null;
+  }
+
+  const withPhotos = eligible.filter((d) => d.photos.length > 0);
+  const pool = withPhotos.length > 0 ? withPhotos : eligible;
+  const sorted = [...pool].sort((a, b) => a.id.localeCompare(b.id));
+  const seed = `${today}|${sorted.map((d) => d.id).join(',')}`;
+  const idx = hashPick(seed) % sorted.length;
+  return sorted[idx] ?? null;
 }
 
 export function coverPhoto(d: DayEntry): string | null {

@@ -38,7 +38,7 @@ export function AlbumPage({ journal }: Props) {
   return (
     <div>
       <h1 className="page-title">Album</h1>
-      <p className="page-sub">Tes jours en images</p>
+      <p className="page-sub">Les images que tu gardes</p>
 
       {days.length > 0 && (
         <div className="month-chips" role="list">

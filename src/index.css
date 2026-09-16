@@ -588,6 +588,89 @@ img {
   text-decoration: none;
 }
 
+/* Une trace — soft resurfacing of a past day */
+.trace-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(40, 28, 28, 0.45);
+  border: 1px solid rgba(168, 72, 72, 0.22);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.trace-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.trace-card-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1px solid rgba(168, 72, 72, 0.2);
+}
+.trace-card-body {
+  min-width: 0;
+  flex: 1;
+}
+.trace-card-eyebrow {
+  margin: 0 0 2px;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  font-weight: 560;
+}
+.trace-card-date {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+.trace-card-title {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.12rem;
+  color: var(--cream);
+  line-height: 1.25;
+}
+.trace-card-excerpt {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.trace-card-dismiss {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding-top: 2px;
+}
+.trace-card-dismiss:hover {
+  color: var(--accent-bright);
+}
+
+.chercher-sub {
+  margin-top: -6px;
+  margin-bottom: 14px;
+}
+
 /* SW update banner */
 .sw-update-wrap {
   flex-shrink: 0;

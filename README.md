@@ -1,6 +1,6 @@
 # Sillage
 
-Journal intime — application web simple et discrète. Tes jours restent dans le navigateur (`localStorage`).
+Garde une trace de chaque jour — application web simple et discrète. Tes jours restent dans le navigateur (`localStorage`).
 
 ## Lancer en local
 
@@ -35,7 +35,7 @@ npm run preview
 ## Fonctionnalités
 
 - **Fil** — semaine, aujourd’hui, jours précédents
-- **Jour** — titre, histoire, lieu, humeur, photos
+- **Jour** — titre, souvenir, lieu, humeur, photos
 - **Album** — grilles de couvertures
 - **Chercher** — texte + filtres d’humeur
 - **Tiroir** — épinglés, privé, réglages

@@ -404,7 +404,7 @@ function ReglagesSection({
     try {
       const next = await parseBackupFile(file);
       const ok = window.confirm(
-        'Remplacer tout le journal local par cette sauvegarde ?',
+        'Remplacer tous tes jours locaux par cette sauvegarde ?',
       );
       if (ok) {
         await journal.importBackup(next);
@@ -472,7 +472,7 @@ function ReglagesSection({
         <div className="drawer-row">
           <div className="left">
             Rappel du soir
-            <span>Si tu n&apos;as pas écrit, un geste discret.</span>
+            <span>Si tu n&apos;as rien gardé, un geste discret.</span>
           </div>
           <button
             type="button"
@@ -529,7 +529,7 @@ function ReglagesSection({
         >
           <div className="left">
             Importer une sauvegarde
-            <span>Remplace le journal sur cet appareil</span>
+            <span>Remplace tes jours sur cet appareil</span>
           </div>
         </button>
         <button
@@ -582,7 +582,7 @@ function ReglagesSection({
         <button type="button" className="drawer-row" onClick={onApropos} disabled={busy}>
           <div className="left">
             À propos Sillage
-            <span>Journal intime</span>
+            <span>Mémoire du quotidien</span>
           </div>
           <span className="chev">›</span>
         </button>
@@ -683,8 +683,9 @@ export function TiroirPage({ journal }: Props) {
             Sillage
           </strong>
           <p style={{ marginTop: 8 }}>
-            Un journal intime, simple et discret. Tes jours restent sur cet appareil —
-            rien n&apos;est envoyé ailleurs.
+            Un lieu pour garder les traces de chaque jour — pour qu&apos;elles ne
+            s&apos;effacent pas. Tes jours restent sur cet appareil ; rien n&apos;est
+            envoyé ailleurs.
           </p>
         </div>
       </div>

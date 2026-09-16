@@ -69,6 +69,12 @@ export interface JournalState {
   photosInIdb?: boolean;
   /** Soft PIN for Coffre UI gate — salt + PBKDF2 hash only; null/absent = no PIN */
   coffrePin?: { salt: string; hash: string } | null;
+  /** Selected past day for « Une trace » soft resurfacing */
+  traceDayId?: string;
+  /** Calendar day (YYYY-MM-DD) when traceDayId was chosen */
+  traceShownOn?: string;
+  /** Calendar day when user dismissed « Une trace » */
+  traceDismissedOn?: string;
 }
 
 export const MOODS: { id: MoodId; label: string; icon: string }[] = [

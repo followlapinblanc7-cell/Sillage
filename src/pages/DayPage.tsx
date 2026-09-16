@@ -237,14 +237,14 @@ export function DayPage({ journal }: Props) {
         aria-label="Titre"
       />
 
-      <div className="story-label">L&apos;histoire</div>
+      <div className="story-label">Le souvenir</div>
       <textarea
         className="story-input"
-        placeholder="Écris librement…"
+        placeholder="Qu’est-ce qui restera de cette journée ?"
         value={day.story}
         onChange={(e) => journal.updateDay(id, { story: e.target.value })}
         onBlur={onStoryBlur}
-        aria-label="Histoire"
+        aria-label="Souvenir"
       />
 
       <button
