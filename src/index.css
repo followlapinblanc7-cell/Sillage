@@ -1146,6 +1146,49 @@ img {
   line-height: 1.5;
 }
 
+/* Ce mois — soft literary glimpse in Tiroir */
+.mois-glimpse {
+  margin: 0 0 22px;
+  padding: 16px 18px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mois-glimpse-title {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  color: var(--cream);
+}
+
+.mois-glimpse-days {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mois-glimpse-empty {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.mois-glimpse-moods {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+
 .muted {
   color: var(--text-muted);
 }
