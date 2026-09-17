@@ -12,6 +12,8 @@ import { CeJourLa } from '../components/CeJourLa';
 import { LieuField } from '../components/LieuField';
 import { CoffreUnlock } from '../components/CoffreUnlock';
 import { PhotoCaptureSheet } from '../components/PhotoCaptureSheet';
+import { useAuthSession } from '../hooks/useAuthSession';
+import { useCircles } from '../hooks/useCircles';
 
 interface Props {
   journal: JournalApi;
@@ -43,6 +45,11 @@ export function DayPage({ journal }: Props) {
   const [geoSupported] = useState(
     () => typeof navigator !== 'undefined' && 'geolocation' in navigator,
   );
+
+  const auth = useAuthSession();
+  const { circles } = useCircles(auth.user?.id);
+  const canShareWithCircle =
+    auth.configured && !!auth.user && circles.length > 0 && !day.private;
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const geoSessionRef = useRef<{
@@ -553,12 +560,46 @@ export function DayPage({ journal }: Props) {
               >
                 {day.private ? 'Sortir du coffre' : 'Mettre au coffre'}
               </button>
+              <button
+                type="button"
+                className="btn-ghost day-action-btn"
+                disabled={!canShareWithCircle}
+                title={
+                  day.private
+                    ? 'Les jours du coffre ne se partagent jamais'
+                    : !auth.configured
+                      ? 'Cercle cloud non configuré'
+                      : !auth.user
+                        ? 'Connecte-toi dans le Tiroir pour partager'
+                        : circles.length === 0
+                          ? 'Rejoins ou crée un cercle d’abord'
+                          : 'Partager ce jour avec le cercle (bientôt)'
+                }
+                aria-disabled={!canShareWithCircle}
+              >
+                Partager avec le cercle
+              </button>
             </div>
             {day.private ? (
               <p className="muted coffre-hint">
-                Invisible dans le Fil, l&apos;Album et la recherche.
+                Invisible dans le Fil, l&apos;Album et la recherche. Jamais partagé
+                avec le cercle.
               </p>
-            ) : null}
+            ) : !canShareWithCircle ? (
+              <p className="muted coffre-hint">
+                {!auth.configured
+                  ? 'Le partage cercle arrivera quand le cloud sera branché.'
+                  : !auth.user
+                    ? 'Connecte-toi (Tiroir → Compte) pour partager un jour.'
+                    : circles.length === 0
+                      ? 'Sans cercle, le bouton reste en attente.'
+                      : null}
+              </p>
+            ) : (
+              <p className="muted coffre-hint">
+                Bientôt : envoi opt-in vers « Ensemble ». Le coffre reste privé.
+              </p>
+            )}
           </div>
         ) : null}
       </section>

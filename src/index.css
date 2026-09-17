@@ -3540,3 +3540,96 @@ img {
   line-height: 1.4;
   color: var(--text-faint);
 }
+
+/* Compte / Cercle (Tiroir) */
+.drawer-section-title {
+  margin: 0 2px 10px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--cream);
+}
+
+.cercle-card {
+  padding: 14px 16px 16px;
+}
+
+.cercle-calm {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.cercle-calm-sub {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.cercle-actions {
+  margin-top: 14px;
+}
+
+.cercle-google-btn {
+  width: 100%;
+}
+
+.cercle-account-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.cercle-signout {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.cercle-list-block {
+  padding: 12px 16px 14px;
+}
+
+.cercle-list-heading {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.cercle-list-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.cercle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cercle-list-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.cercle-list-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.cercle-list-name {
+  color: var(--cream);
+}
+
+.day-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
