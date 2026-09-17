@@ -70,6 +70,9 @@ export interface GlobeInstance {
   polygonAltitude: (
     acc: number | string | ((d: unknown) => number),
   ) => GlobeInstance;
+  polygonCapCurvatureResolution: (
+    acc: number | string | ((d: unknown) => number),
+  ) => GlobeInstance;
   polygonLabel: (
     acc: string | ((d: unknown) => string | null | undefined),
   ) => GlobeInstance;

@@ -34,7 +34,6 @@ import {
   GLOBE_BG,
   GLOBE_COUNTRY_FALLBACK,
   GLOBE_COUNTRY_PALETTE,
-  GLOBE_COUNTRY_SIDE,
   GLOBE_COUNTRY_STROKE,
   GLOBE_GRATICULE,
   GLOBE_PIN,
@@ -72,7 +71,8 @@ function countryCapColor(d: unknown, theme: ThemeId): string {
 function applyCountryStyle(globe: GlobeInstance, theme: ThemeId) {
   globe
     .polygonCapColor((d) => countryCapColor(d, theme))
-    .polygonSideColor(() => GLOBE_COUNTRY_SIDE[theme])
+    // Match side to cap so extruded skirts never flash ocean/black through gaps.
+    .polygonSideColor((d) => countryCapColor(d, theme))
     .polygonStrokeColor(() => GLOBE_COUNTRY_STROKE[theme]);
 }
 
@@ -426,7 +426,11 @@ export function MondePage({ journal }: Props) {
         const atm = GLOBE_ATMOSPHERE[theme];
         const saved = readSavedView();
         const mobile = isConstrainedGpu();
-        const polyAlt = mobile ? 0.002 : 0.0035;
+        // Keep caps clear of the ocean sphere (z-fighting → black speckles).
+        // Library default is 0.01; mobile depth buffers need a bit more lift.
+        const polyAlt = mobile ? 0.01 : 0.012;
+        // Degrees between cap tessellation samples — lower = denser mesh, fewer holes.
+        const polyCapCurvature = mobile ? 3 : 2.5;
 
         const globe = new Globe(el, {
           rendererConfig: globeRendererConfig(),
@@ -439,6 +443,7 @@ export function MondePage({ journal }: Props) {
           .atmosphereAltitude(atm.altitude)
           .polygonsTransitionDuration(0)
           .polygonAltitude(polyAlt)
+          .polygonCapCurvatureResolution(polyCapCurvature)
           .polygonLabel(() => null)
           .polygonGeoJsonGeometry('geometry')
           .pointerEventsFilter((obj) => obj.__globeObjType !== 'polygon')

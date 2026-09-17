@@ -52,18 +52,18 @@ export function oceanGlobeImageUrl(theme: ThemeId): string {
 }
 
 /**
- * Richer / darker muted country fills (still distinguishable).
- * Same night atlas palette for both app themes.
+ * Opaque muted country fills (same night atlas for both app themes).
+ * Alpha < 1 lets the ocean punch through tessellation / z-fight gaps.
  */
 const NIGHT_COUNTRY_PALETTE = [
-  'rgba(118, 76, 56, 0.94)',
-  'rgba(86, 70, 98, 0.94)',
-  'rgba(128, 86, 60, 0.94)',
-  'rgba(58, 84, 108, 0.94)',
-  'rgba(64, 96, 72, 0.94)',
-  'rgba(48, 88, 86, 0.94)',
-  'rgba(108, 78, 64, 0.94)',
-  'rgba(92, 68, 104, 0.94)',
+  '#764c38',
+  '#564662',
+  '#80563c',
+  '#3a546c',
+  '#406048',
+  '#305856',
+  '#6c4e40',
+  '#5c4468',
 ] as const;
 
 export const GLOBE_COUNTRY_PALETTE: Record<ThemeId, string[]> = {
@@ -73,13 +73,14 @@ export const GLOBE_COUNTRY_PALETTE: Record<ThemeId, string[]> = {
 
 /** Antarctica / unknown — cool slate. */
 export const GLOBE_COUNTRY_FALLBACK: Record<ThemeId, string> = {
-  dark: 'rgba(118, 124, 136, 0.86)',
-  light: 'rgba(118, 124, 136, 0.86)',
+  dark: '#767c88',
+  light: '#767c88',
 };
 
+/** Opaque dark skirt; Monde matches side to cap so this is a safe fallback. */
 export const GLOBE_COUNTRY_SIDE: Record<ThemeId, string> = {
-  dark: 'rgba(6, 8, 12, 0.42)',
-  light: 'rgba(6, 8, 12, 0.42)',
+  dark: '#0a0e14',
+  light: '#0a0e14',
 };
 
 /** Soft hairline borders so political outlines read on dark fills. */
