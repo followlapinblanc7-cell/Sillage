@@ -1010,3 +1010,63 @@ export function formatWeekRange(ids: string[]): string {
 }
 
 export type JournalApi = ReturnType<typeof useJournal>;
+
+/** Shift a date id by N calendar months (positive = future). Day clamped. */
+export function shiftMonth(id: string, deltaMonths: number): string {
+  const [y, m, d] = id.split('-').map(Number);
+  const date = new Date(y, m - 1 + deltaMonths, 1);
+  const lastDay = new Date(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    0,
+  ).getDate();
+  date.setDate(Math.min(d, lastDay));
+  return toId(date);
+}
+
+/** FR month + year label from YYYY-MM or YYYY-MM-DD, e.g. « Septembre 2026 ». */
+export function formatMonthYear(idOrYm: string): string {
+  const [y, m] = idOrYm.split('-').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return '';
+  const raw = new Date(y, m - 1, 1).toLocaleDateString('fr-FR', {
+    month: 'long',
+    year: 'numeric',
+  });
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+export interface MonthCell {
+  id: string;
+  /** False when the cell belongs to an adjacent month (padding). */
+  inMonth: boolean;
+}
+
+/**
+ * Monday-start month grid (lun–dim) for YYYY-MM or YYYY-MM-DD.
+ * Includes leading/trailing padding so each row is a full week.
+ */
+export function monthGrid(idOrYm: string): MonthCell[] {
+  const [y, m] = idOrYm.split('-').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return [];
+  const first = new Date(y, m - 1, 1);
+  const dow = first.getDay(); // 0=Sun
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const start = new Date(y, m - 1, 1 + mondayOffset);
+  const lastDay = new Date(y, m, 0).getDate();
+  const last = new Date(y, m - 1, lastDay);
+  const lastDow = last.getDay();
+  const sundayOffset = lastDow === 0 ? 0 : 7 - lastDow;
+  const end = new Date(y, m - 1, lastDay + sundayOffset);
+  const total =
+    Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  const cells: MonthCell[] = [];
+  for (let i = 0; i < total; i++) {
+    const x = new Date(start);
+    x.setDate(start.getDate() + i);
+    cells.push({
+      id: toId(x),
+      inMonth: x.getMonth() === m - 1 && x.getFullYear() === y,
+    });
+  }
+  return cells;
+}
