@@ -856,26 +856,31 @@ export function MondePage({ journal }: Props) {
         />
         {!globeError && !globeReady ? (
           <div className="monde-globe-loading" aria-hidden="true">
-            <p>Le globe s’éveille…</p>
+            <p>
+              <span className="monde-globe-loading-dot" aria-hidden="true" />
+              Le globe s’éveille…
+            </p>
           </div>
         ) : null}
         {globeError ? (
           <div className="monde-map-fallback" role="status">
-            <p>{failCopy.body}</p>
-            {failDetail && (import.meta.env.DEV || failReason === 'unknown') ? (
-              <p className="monde-fail-detail">{failDetail}</p>
-            ) : null}
-            <div className="monde-fail-actions">
-              <button
-                type="button"
-                className="monde-retry-btn"
-                onClick={retryGlobe}
-              >
-                Réessayer
-              </button>
-              <Link to="/lieux" className="monde-lieux-link">
-                Voir la carte des lieux
-              </Link>
+            <div className="monde-map-fallback-card">
+              <p className="monde-map-fallback-body">{failCopy.body}</p>
+              {failDetail && (import.meta.env.DEV || failReason === 'unknown') ? (
+                <p className="monde-fail-detail">{failDetail}</p>
+              ) : null}
+              <div className="monde-fail-actions">
+                <button
+                  type="button"
+                  className="monde-retry-btn"
+                  onClick={retryGlobe}
+                >
+                  Réessayer
+                </button>
+                <Link to="/lieux" className="monde-lieux-link">
+                  Voir la carte des lieux
+                </Link>
+              </div>
             </div>
           </div>
         ) : null}
@@ -891,7 +896,7 @@ export function MondePage({ journal }: Props) {
             <p className="monde-empty-quote">
               « Le monde attend la première trace. »
             </p>
-            <p className="muted monde-empty-hint">
+            <p className="monde-empty-hint">
               Écris un lieu sur un jour, ou pose un souvenir ici — sur le globe.
             </p>
             <Link to="/lieux" className="monde-lieux-link">
@@ -950,7 +955,7 @@ export function MondePage({ journal }: Props) {
           <p className="monde-place-sheet-label">
             {labelBusy ? 'Le lieu se nomme…' : pendingLabel}
           </p>
-          <p className="muted monde-place-sheet-hint">
+          <p className="monde-place-sheet-hint">
             Sur quel jour poser cette trace ?
           </p>
           <label className="monde-place-day-label">
@@ -977,7 +982,7 @@ export function MondePage({ journal }: Props) {
             aria-label="Choisir une autre date"
           />
           <div className="monde-place-actions">
-            <button type="button" className="btn-ghost" onClick={cancelPlace}>
+            <button type="button" className="monde-place-cancel" onClick={cancelPlace}>
               Annuler
             </button>
             <button

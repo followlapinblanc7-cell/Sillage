@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 const items = [
   {
@@ -58,8 +58,14 @@ const items = [
 ] as const;
 
 export function BottomNav() {
+  const { pathname } = useLocation();
+  const onMonde = pathname === '/monde' || pathname.startsWith('/monde/');
+
   return (
-    <nav className="bottom-nav" aria-label="Navigation principale">
+    <nav
+      className={`bottom-nav${onMonde ? ' bottom-nav--monde' : ''}`}
+      aria-label="Navigation principale"
+    >
       {items.map((item) => (
         <NavLink
           key={item.to}
