@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/Sillage/favicon.svg" />
+    <link rel="manifest" href="/Sillage/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/Sillage/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a1210" />
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('sillage-journal-v1');
+          if (!raw) return;
+          var parsed = JSON.parse(raw);
+          var t = parsed && parsed.theme === 'light' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', t);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', t === 'light' ? '#f3ebe1' : '#1a1210');
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Sillage" />
+    <meta name="description" content="Sillage — Garde une trace de chaque jour." />
+    <title>Sillage</title>
+    <script type="module" crossorigin src="/Sillage/assets/index-lRlojz3q.js"></script>
+    <link rel="modulepreload" crossorigin href="/Sillage/assets/rolldown-runtime-hePW80VL.js">
+    <link rel="stylesheet" crossorigin href="/Sillage/assets/index-D3ZUcW5l.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
