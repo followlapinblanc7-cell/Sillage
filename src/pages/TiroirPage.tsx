@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'r
 import { Link } from 'react-router-dom';
 import { CoffreUnlock } from '../components/CoffreUnlock';
 import { DayCard } from '../components/DayCard';
+import { CircleAccountSection } from '../components/CircleAccountSection';
 import { MoisGlimpse } from '../components/MoisGlimpse';
 import type { JournalApi } from '../hooks/useJournal';
 import {
@@ -731,6 +732,8 @@ export function TiroirPage({ journal }: Props) {
       <p className="page-sub">Ce que tu mets de côté</p>
 
       <MoisGlimpse visibleDays={journal.visibleDays} today={journal.today} />
+
+      <CircleAccountSection />
 
       <div className="drawer-section">
         <div className="drawer-card">
