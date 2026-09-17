@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import type { DayEntry, MoodId } from '../types';
 import { MOODS } from '../types';
 
@@ -45,21 +46,24 @@ export function MoisGlimpse({ visibleDays, today }: Props) {
       className="mois-glimpse"
       aria-label={`Ce mois — ${label}`}
     >
-      <h2 className="mois-glimpse-title">Ce mois</h2>
-      {count === 0 ? (
-        <p className="mois-glimpse-empty">
-          Pas encore de trace ce mois-ci.
-        </p>
-      ) : (
-        <>
-          <p className="mois-glimpse-days">
-            {count === 1 ? '1 jour écrit' : `${count} jours écrits`}
+      <Link to="/calendrier" className="mois-glimpse-link">
+        <h2 className="mois-glimpse-title">Ce mois</h2>
+        {count === 0 ? (
+          <p className="mois-glimpse-empty">
+            Pas encore de trace ce mois-ci.
           </p>
-          {moodPhrase ? (
-            <p className="mois-glimpse-moods">{moodPhrase}</p>
-          ) : null}
-        </>
-      )}
+        ) : (
+          <>
+            <p className="mois-glimpse-days">
+              {count === 1 ? '1 jour écrit' : `${count} jours écrits`}
+            </p>
+            {moodPhrase ? (
+              <p className="mois-glimpse-moods">{moodPhrase}</p>
+            ) : null}
+          </>
+        )}
+        <p className="mois-glimpse-open">Ouvrir le calendrier</p>
+      </Link>
     </section>
   );
 }

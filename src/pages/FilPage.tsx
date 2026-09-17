@@ -130,6 +130,11 @@ export function FilPage({ journal }: Props) {
           <p className="empty-hint">
             « Titre, souvenir, puis le reste si tu veux. »
           </p>
+          <div className="fil-cal-row" style={{ justifyContent: 'center', marginTop: 18 }}>
+            <Link to="/calendrier" className="fil-cal-link">
+              Calendrier
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -164,6 +169,12 @@ export function FilPage({ journal }: Props) {
       ) : null}
 
       <WeekStrip today={today} daysById={state.days} />
+
+      <div className="fil-cal-row">
+        <Link to="/calendrier" className="fil-cal-link">
+          Calendrier
+        </Link>
+      </div>
 
       {hasToday && todayEntry ? (
         <>

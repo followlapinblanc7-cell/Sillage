@@ -5,6 +5,7 @@ import { UpdateBanner } from './components/UpdateBanner';
 import { useServiceWorkerUpdate } from './hooks/useServiceWorkerUpdate';
 import { useJournal } from './hooks/useJournal';
 import { AlbumPage } from './pages/AlbumPage';
+import { CalendrierPage } from './pages/CalendrierPage';
 import { ChercherPage } from './pages/ChercherPage';
 import { DayPage } from './pages/DayPage';
 import { FilPage } from './pages/FilPage';
@@ -52,6 +53,7 @@ function AppRoutes() {
           <Route path="/chercher" element={<ChercherPage journal={journal} />} />
           <Route path="/tiroir" element={<TiroirPage journal={journal} />} />
           <Route path="/lieux" element={<LieuxPage journal={journal} />} />
+          <Route path="/calendrier" element={<CalendrierPage journal={journal} />} />
           <Route path="/monde" element={<MondeRoute journal={journal} />} />
           <Route path="/jour/:id" element={<DayRoute journal={journal} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
